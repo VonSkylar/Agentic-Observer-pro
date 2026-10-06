@@ -48,12 +48,12 @@ def _env(name: str, default):
 
 
 # --- search -------------------------------------------------------------------------------------------
-LAMBDA_FRAC = _env("LAMBDA_FRAC", 0.6)        # price of telescope time, as a share of the recent best gain rate
+LAMBDA_FRAC = _env("LAMBDA_FRAC", 0.45)       # price of telescope time, as a share of the recent best gain rate
 LAMBDA_EMA = _env("LAMBDA_EMA", 0.03)
 SCARCITY_REF = _env("SCARCITY_REF", 0.86)     # tuning constant: scarcity at which time is priced fully
 SCARCITY_POWER = _env("SCARCITY_POWER", 1.0)  # time price x min(1, scarcity / SCARCITY_REF) ** power
 TYPICAL_Q = 0.6
-N_ANCHORS = _env("N_ANCHORS", 12)             # targets tried as field centres per decision (full speed)
+N_ANCHORS = _env("N_ANCHORS", 18)             # targets tried as field centres per decision (full speed)
 N_DENSE = _env("N_DENSE", 20)                  # plus centres in the densest patches of remaining science
 DENSE_BIN_DEG = _env("DENSE_BIN_DEG", 2.5)
 DENSE_FIBERS = (5, 6, 9, 10)
@@ -62,8 +62,8 @@ REFINE_ROUNDS = _env("REFINE_ROUNDS", 4)
 REFINE_FIXED_T = _env("REFINE_FIXED_T", 1)
 REFINE_STEPS = tuple((dn * REFINE, de * REFINE) for dn in (-1, 0, 1) for de in (-1, 0, 1) if dn or de) if REFINE > 0 else ()
 POOL = _env("POOL", 600)                      # candidates kept after the cheap proxy ranking
-NEIGHBOUR_RADIUS_DEG = _env("NEIGHBOUR_RADIUS_DEG", 2.1)
-EDGE_MARGIN_DEG = _env("EDGE_MARGIN_DEG", 0.04)   # keep targets this far inside their fibre cell
+NEIGHBOUR_RADIUS_DEG = _env("NEIGHBOUR_RADIUS_DEG", 2.5)
+EDGE_MARGIN_DEG = _env("EDGE_MARGIN_DEG", 0.02)   # keep targets this far inside their fibre cell
 DURATIONS = (300, 450, 600, 750, 900, 1200, 1500, 1800, 2400, 3000, 3600)
 LEVEL_DURATIONS = (DURATIONS, (300, 600, 900, 1200, 1800, 2400, 3600), (450, 900, 1800, 3600), (900, 1800))
 MIN_T = _env("MIN_T", 0)                      # shortest exposure considered (unless the night is ending)
