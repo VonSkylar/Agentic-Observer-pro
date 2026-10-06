@@ -17,6 +17,7 @@ agent.py          entry point: protocol loop, pacing, instrument-fault reporting
 planner.py        one search for pointing + fibres + duration + program; learning from results
 skymath.py        public sky maths: sidereal time, alt/az, gnomonic projection, fibre grid, Moon
 advisor.py        the model stages: night plan, fault review, paid-report confirmation (prompts + validation)
+handover.py       public request text, source lines, validated fault/test schedules and UTC conversion
 llm_client.py     OpenAI-compatible chat client on background threads (Kimi Coding Plan defaults)
 observer.project.json, pack_agent.py, .env.example
 ```

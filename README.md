@@ -128,6 +128,44 @@ local comparisons reproducible on a busy machine (the platform run uses the adap
 - **Better use of the model**, e.g. letting it read the whole forecast week and plan which nights to spend
   on which part of the sky.
 
+## Public handover text
+
+The agent retains `reason` from public observation requests received through stdin,
+including active requests and newly issued messages. The nightly plan and fault
+review receive the source text, site UTC offset and exact observing-night bounds;
+paid report confirmation receives the same context. The first long handover is
+retained for decoding conventions, alongside current requests and the latest
+expired handover for continuity. No task-card files are read by the agent.
+
+The night plan can return sourced `report_fault` onsets and `test_window` intervals.
+The model copies source clock times and UTC offsets; Python converts them to UTC.
+Source request/line references, explicit source dates and night bounds are validated
+before use. The plan focuses on nearby dated lines and undated conventions/corrections;
+fault review and paid confirmation receive the full selected handovers.
+The deterministic scheduler avoids exposures across these boundaries, waits through
+tests without treating them as faults, and reports confirmed camera-work events
+without waiting for a low E signal. Each event is attempted at most once; false-report
+limits, minimum report spacing and paid confirmation remain in effect. Model calls
+still occur only at night start and before paid reports. A late or invalid reply
+leaves the rule fallback in control until usable advice arrives; text first received
+after the night's calls is retained for the next nightly stage.
+
+This implements the input/action connection for fault and test handovers, not a
+general interpreter of every weather/terrain instruction. Structured bulletin and
+forecast weather handling remains unchanged. Line references establish source provenance;
+they do not mechanically prove the model's interpretation or time conversion.
+
+For `deepseek-flash` on the official `api.deepseek.com` endpoint, the client defaults
+to disabled thinking for bounded advisory JSON: a 2000-token cap with thinking on
+can leave no final JSON after reasoning. Explicitly enabling thinking instead uses
+an 8192-token default budget and `reasoning_effort=low`. Other providers keep
+their existing request shape. Optional overrides are `PRO_MODEL_THINKING`
+(`auto`, `enabled`, `disabled`), `PRO_MODEL_REASONING_EFFORT`, and
+`PRO_MODEL_MAX_TOKENS`. Truncated completions are logged as `CompletionTruncated`.
+See the [DeepSeek thinking-mode documentation](https://api-docs.deepseek.com/guides/thinking_mode/).
+
+Run the focused regression suite with `python -m unittest discover -s tests -v`.
+
 ## License
 
 Task cards, simulated data, evaluation code and the example projects are licensed under

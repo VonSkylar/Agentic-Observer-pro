@@ -27,6 +27,7 @@ import time
 from datetime import timedelta
 
 from advisor import Advisor
+from handover import Handover
 from llm_client import LLMClient, api_key, load_dotenv
 from planner import Planner
 from skymath import format_utc, parse_utc
@@ -102,6 +103,8 @@ class ObserverAgent:
         self.rules_only = rules_only
         self.client = None if rules_only else LLMClient(log=log)
         self.advisor = RulesOnly() if rules_only else Advisor(self.client, log=log)
+        self.handover = Handover(init["site"])
+        self.handover.ingest(init.get("active_requests", []))
         self.model_wait = 0.0                    # wall seconds spent waiting for the model (not planning cost)
         self.fault_likely = None                 # tonight's model estimate that an instrument fault is active
         self.scale_hours: dict = {}              # hour -> [planner.scale samples] (for the model's fault table)
@@ -170,6 +173,8 @@ class ObserverAgent:
         self.last_now = now
         hours = (now - self.start).total_seconds() / 3600.0
         planner = self.planner
+        self.handover.ingest(payload.get("new_messages", []))
+        self.handover.ingest(payload.get("active_requests", []))
         for message in payload.get("new_messages", []):
             if message.get("record_type") == "forecast":
                 self.forecast_notices = message.get("notices", [])
@@ -197,24 +202,36 @@ class ObserverAgent:
         night_index, night_start, night_end = night
         if self.night_seen != night_index:
             self.night_seen = night_index
+            self.handover.apply([])
             self._night_advice(night_start, payload, hours)
         else:
             self._apply_advice(*self.advisor.poll())
         self.scale_hours.setdefault(int(hours), []).append(self.planner.scale)
+        report = self._handover_report(hours, payload)
+        if report is not None:
+            return report
+        test_end = self.handover.test_end(now)
+        if test_end is not None:
+            test_end = self.handover.next_boundary(now, test_end)
+            return {"action": "wait", "until_utc": format_utc(test_end), "reason": "handover: scheduled test, not a fault"}
+        boundary = self.handover.next_boundary(now, night_end)
+        if boundary < night_end and (boundary - now).total_seconds() < planner.min_exposure:
+            return {"action": "wait", "until_utc": format_utc(boundary), "reason": "handover: next operating boundary"}
         if (night_end - now).total_seconds() < planner.min_exposure:
             nxt = planner.next_night_start(now)
             if nxt is None:
                 return {"action": "finish", "reason": "survey over"}
             return {"action": "wait", "until_utc": format_utc(nxt), "reason": "night ending"}
         if planner.site_closed():
-            return {"action": "wait", "duration_seconds": self._to_next_slot(now, night_start),
+            return {"action": "wait", "duration_seconds": min(self._to_next_slot(now, night_start), (boundary - now).total_seconds()),
                     "reason": "bulletin: rain/storm over the whole sky"}
         report = self._maybe_report(hours, payload)
         if report is not None:
             return report
-        action = planner.plan(now, night_end, night_index, hours)
+        action = planner.plan(now, boundary, night_index, hours)
         if action is None:
-            return {"action": "wait", "duration_seconds": self._to_next_slot(now, night_start), "reason": "nothing useful is up"}
+            seconds = min(self._to_next_slot(now, night_start), (boundary - now).total_seconds())
+            return {"action": "wait", "duration_seconds": seconds, "reason": "nothing useful is up"}
         self.observes += 1
         action["reason"] = f"{len(action['assignments'])} fibres, program {action['program']}"
         return action
@@ -283,7 +300,8 @@ class ObserverAgent:
         left = self._clock(payload)[1]
         started = time.monotonic()
         answers = self.advisor.start_night(night_date, tonight, bulletin, self._fault_table(hours), left,
-                                           self._model_wait_budget(payload))
+                                           self._model_wait_budget(payload),
+                                           self.handover.context(night_start, self.planner.current_night(self.last_now)[2]))
         self.model_wait += time.monotonic() - started
         self._apply_advice(*answers)
 
@@ -301,6 +319,9 @@ class ObserverAgent:
         if plan is not None:
             self.planner.bad_forecast = plan["bad_night"]
             self.planner.extra_avoid = set(plan["avoid_directions"])
+            self.handover.apply(plan.get("operations", []))
+            if self.handover.operations:
+                log(f"llm handover {self.advisor.night_date}: {len(self.handover.operations)} validated operations")
             log(f"llm night plan {self.advisor.night_date}: bad_night={plan['bad_night']} avoid={plan['avoid_directions']} ({plan['reason']})")
         if fault is not None:
             self.fault_likely = fault["fault_likely"]
@@ -323,6 +344,9 @@ class ObserverAgent:
             rows.append([stamp, round(e_by_hour[hour], 2) if hour in e_by_hour else None, round(v[len(v) // 2], 2)])
         notices = sorted({f"{kind} {direction}" for kind, direction in self.planner.notices})
         return {"columns": ["utc_hour", "E", "scale"], "rows": rows, "ref": round(self._scale_ref(), 2),
+                "now_utc": format_utc(self.start + timedelta(hours=hours)),
+                "last_correct_report_utc": (format_utc(self.handover.repaired_through)
+                                            if self.handover.repaired_through is not None else None),
                 "notices_now": notices,
                 "hours_since_earthquake_notice_began": None if self.quake_onset_hours < -1e8 else round(hours - self.quake_onset_hours, 1),
                 "free_false_reports_left": max(0, self.free_left()), "paid_false_reports_so_far": self.paid_false,
@@ -330,6 +354,21 @@ class ObserverAgent:
                 "hours_since_last_report": None if self.reports == 0 else round(hours - self.last_report_hours, 1)}
 
     # --- instrument faults ---------------------------------------------------------------------------
+
+    def _handover_report(self, hours: float, payload: dict):
+        """A sourced scheduled fault need not wait for E to drop. Never retry the same event."""
+        if self.false_reports >= MAX_FALSE_REPORTS or hours - self.last_report_hours < MIN_REPORT_SPACING_HOURS:
+            return None
+        due = self.handover.due_fault(parse_utc(payload["now_utc"]))
+        if due is None or (self.free_left() <= 0 and self.paid_false >= MAX_PAID_FALSE):
+            return None
+        self.handover.attempted_faults.add(due["start"])
+        if not self._model_agrees(hours, payload):
+            return None
+        self.last_report_hours = hours
+        self.reports += 1
+        log(f"pro: handover report at {payload['now_utc']} (source {due['source_request_id']})")
+        return {"action": "report", "reason": "handover: confirmed guider-camera work"}
 
     def _maybe_report(self, hours: float, payload: dict):
         """Report (probe) when the quality level stays below what the program bands allow.
@@ -417,6 +456,16 @@ class ObserverAgent:
         rows = [(hour, sorted(v)[len(v) // 2]) for hour, _, v in self.planner.e_hours if hour >= self.ref_from_hours][-24:]
         evidence = {"hourly_E_last_24h": [round(e, 2) for _, e in rows], "fault_table": self._fault_table(hours),
                     "paid_false_reports_so_far": self.paid_false, "correct_reports_so_far": self.correct_reports}
+        night = self.planner.current_night(parse_utc(payload["now_utc"]))
+        if night is not None:
+            evidence["handover"] = self.handover.context(night[1], night[2])
+        evidence["now_utc"] = payload["now_utc"]
+        # Scheduled attempts are marked before confirmation to prevent re-entry.
+        now = parse_utc(payload["now_utc"])
+        scheduled = [op for op in self.handover.operations if op["kind"] == "report_fault"
+                     and op["start"] <= now
+                     and (self.handover.repaired_through is None or op["start"] > self.handover.repaired_through)]
+        evidence["scheduled_fault_onsets_utc"] = [format_utc(op["start"]) for op in scheduled]
         started = time.monotonic()
         left = self._clock(payload)[1]
         verdict = self.advisor.confirm_report(evidence, left, min(30.0, 2.0 * self._model_wait_budget(payload)))
@@ -432,6 +481,7 @@ class ObserverAgent:
 
     def _on_report_result(self, result: dict, hours: float) -> None:
         if result.get("correct"):
+            self.handover.repaired_through = self.start + timedelta(hours=hours)
             log(f"pro: report correct, fault repaired (delta {result.get('score_delta')})")
             self.correct_reports += 1
             self.false_since_correct = 0

@@ -19,11 +19,16 @@ import re
 import threading
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 
 DEFAULT_BASE_URL = "https://api.kimi.com/coding/v1"
 DEFAULT_MODEL = "k3"
 _JSON_OBJECT = re.compile(r"\{.*\}", re.S)
+
+
+class CompletionTruncated(ValueError):
+    """The provider exhausted its completion budget before delivering valid JSON."""
 
 
 def api_key() -> str:
@@ -91,23 +96,44 @@ class LLMClient:
         self.max_calls = max_calls
         self.max_retries = max_retries
         self.max_in_flight = max_in_flight
+        deepseek_flash = (urllib.parse.urlparse(self.base_url).hostname == "api.deepseek.com"
+                          and self.model == "deepseek-flash")
+        thinking = os.environ.get("PRO_MODEL_THINKING", "auto").strip().lower()
+        if thinking not in ("auto", "enabled", "disabled"):
+            raise ValueError("PRO_MODEL_THINKING must be auto, enabled or disabled")
+        # Flash defaults to thinking on the official API; bounded advisory stages
+        # need final JSON rather than spending the entire budget on reasoning.
+        if thinking == "auto":
+            thinking = "disabled" if deepseek_flash else None
+        self.thinking = thinking
+        self.max_tokens = int(os.environ.get("PRO_MODEL_MAX_TOKENS",
+                                             "8192" if deepseek_flash and thinking == "enabled" else "2000"))
+        self.reasoning_effort = os.environ.get("PRO_MODEL_REASONING_EFFORT", "low" if deepseek_flash else "").strip()
         self.calls: list[Call] = []
         self.ok = 0
         self.failed = 0
 
     def _request(self, system: str, user: dict, timeout: float) -> dict:
-        body = json.dumps({
+        payload = {
             "model": self.model,
             "messages": [{"role": "system", "content": system},
                          {"role": "user", "content": json.dumps(user, separators=(",", ":"))}],
-            "max_tokens": 2000,
-        }).encode("utf-8")
+            "max_tokens": self.max_tokens,
+        }
+        if self.thinking is not None:
+            payload["thinking"] = {"type": self.thinking}
+        if self.thinking == "enabled" and self.reasoning_effort:
+            payload["reasoning_effort"] = self.reasoning_effort
+        body = json.dumps(payload).encode("utf-8")
         request = urllib.request.Request(self.base_url + "/chat/completions", data=body, method="POST",
                                          headers={"Content-Type": "application/json",
                                                   "Authorization": "Bearer " + self.key})
         with urllib.request.urlopen(request, timeout=timeout) as response:
             data = json.loads(response.read().decode("utf-8"))
-        text = data["choices"][0]["message"]["content"] or ""
+        choice = data["choices"][0]
+        if choice.get("finish_reason") == "length":
+            raise CompletionTruncated("completion token limit reached")
+        text = choice["message"]["content"] or ""
         match = _JSON_OBJECT.search(text)
         if not match:
             raise ValueError("no JSON object in the reply")

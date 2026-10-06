@@ -79,6 +79,18 @@ python3 pack_agent.py --out ../python-pro-agent.zip
 - **被重做的不完整曝光。** 大约十分之一的光纤时间花在了后来被同一目标更长曝光取代的曝光上。`PRO_PARTIAL_DISCOUNT<1` 会对赛季计划预计会做完的目标打折计算不完整曝光；它在四张练习卡上有帮助，在另外八张卡上反而变差，所以默认关闭。
 - **更好地用大模型**，例如让它读整周预报，规划哪些夜晚去观测哪片天区。
 
+## 交接本接入
+
+程序保存 stdin 中观测请求的 `reason` 原文，按原文行编号后传给每晚的计划、故障复核和付费报修确认。输入包含站点 UTC 偏移及当晚本地、UTC 起止时间；最初长交接本的解码约定、当前请求及最近一期过期交接本会保留供参考。运行时不读取任务卡文件。
+
+模型可输出带原文请求 ID、行号的导星相机故障开始时间和测试窗口。模型提取原文时钟与时区，Python 执行 UTC 换算，并校验原文明确日期、时间范围及来源。夜间计划聚焦附近日期的原文行及未注明日期的约定、更正；故障复核及付费确认收到完整的所选交接本。程序限制曝光不跨越这些边界；测试期间等待，不把测试作为故障；已确认的相机工作到点可报修，无需等待 E 降低。同一事件最多尝试一次，仍遵守误报上限、报修间隔及付费确认。模型失败或回复无效时继续规则回退；夜间调用之后才收到的文字保留到下一次夜间阶段。
+
+这次接入覆盖交接本的故障及测试操作；天气、山体仍沿用原有结构化公告处理。来源行号只能追踪模型依据，不能自动证明其语义理解正确。
+
+官方 DeepSeek 接口的 `deepseek-flash` 默认使用非思考模式，避免有限输出额度全部耗在思考过程、最终 JSON 为空。可通过 `PRO_MODEL_THINKING=enabled` 开启思考，此时默认输出预算为 8192、`reasoning_effort=low`；也可用 `PRO_MODEL_MAX_TOKENS`、`PRO_MODEL_REASONING_EFFORT` 覆盖。其他接口保留原请求格式。输出被截断会记录为 `CompletionTruncated`，不会再与普通解析失败混淆。[DeepSeek 接口说明](https://api-docs.deepseek.com/guides/thinking_mode/)。
+
+回归测试：`python -m unittest discover -s tests -v`。
+
 ## 许可
 
 任务卡、模拟数据、评测代码和示例项目采用 [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) 许可；请引用 GOSIM 2026 Agentic Observer Hackathon（https://create.gosim.org/survey26/）。详见 `../LICENSE.md`。
