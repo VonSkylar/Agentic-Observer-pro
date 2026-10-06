@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="430" viewBox="0 0 1100 430" role="img" aria-labelledby="title description">
+  <title id="title">昼夜与固定 UTC slot 网格 / Day and night versus the fixed UTC slot grid</title>
+  <desc id="description">上方条带以白色表示白昼、黑色表示太阳高度低于负十八度的夜晚。下方独立的每格九百秒的网格中，两端各有一个格子跨越昼夜边界，画叉舍弃。中间完整落在夜晚的格子保留；曝光在最后一个保留格子的终点停止。</desc>
+  <rect width="1100" height="430" fill="#fff"/>
+
+  <g font-family="Noto Sans CJK SC, Noto Sans SC, Microsoft YaHei, Arial, sans-serif" text-anchor="middle" fill="#111">
+    <text x="550" y="38" font-size="23" font-weight="700">昼夜边界与固定 UTC slot 网格 / Day–night boundary and fixed UTC slot grid</text>
+    <text x="275" y="79" font-size="17">太阳高度角 = −18°</text>
+    <text x="275" y="101" font-size="16">Sun altitude = −18°</text>
+    <text x="865" y="79" font-size="17">太阳高度角 = −18°</text>
+    <text x="865" y="101" font-size="16">Sun altitude = −18°</text>
+    <text x="101" y="146" font-size="17">昼夜条</text>
+    <text x="101" y="167" font-size="15">Day/night</text>
+    <text x="101" y="260" font-size="17">UTC 网格</text>
+    <text x="101" y="281" font-size="15">15 min slots</text>
+  </g>
+
+  <!-- Day/night strip: the two twilight crossings are at x=275 and x=865. -->
+  <rect x="150" y="125" width="840" height="50" fill="#fff" stroke="#111" stroke-width="2"/>
+  <rect x="275" y="125" width="590" height="50" fill="#111"/>
+  <g font-family="Noto Sans CJK SC, Noto Sans SC, Microsoft YaHei, Arial, sans-serif" font-size="18" text-anchor="middle">
+    <text x="212" y="156" fill="#111">白昼 / Day</text>
+    <text x="570" y="156" fill="#fff">夜晚 / Night</text>
+    <text x="927" y="156" fill="#111">白昼 / Day</text>
+  </g>
+
+  <!-- Seven equal 900 s cells. The first and last straddle the crossings. -->
+  <rect x="220" y="240" width="700" height="60" fill="#fff" stroke="#111" stroke-width="2"/>
+  <rect x="320" y="240" width="500" height="60" fill="#111"/>
+  <g stroke="#fff" stroke-width="2">
+    <line x1="420" y1="240" x2="420" y2="300"/>
+    <line x1="520" y1="240" x2="520" y2="300"/>
+    <line x1="620" y1="240" x2="620" y2="300"/>
+    <line x1="720" y1="240" x2="720" y2="300"/>
+  </g>
+  <g stroke="#111" stroke-width="3">
+    <line x1="237" y1="251" x2="303" y2="289"/>
+    <line x1="237" y1="289" x2="303" y2="251"/>
+    <line x1="837" y1="251" x2="903" y2="289"/>
+    <line x1="837" y1="289" x2="903" y2="251"/>
+  </g>
+  <g font-family="Noto Sans CJK SC, Noto Sans SC, Microsoft YaHei, Arial, sans-serif" text-anchor="middle" fill="#fff">
+    <text x="370" y="264" font-size="16" font-weight="700">首个保留</text>
+    <text x="370" y="285" font-size="15">First kept</text>
+    <text x="570" y="279" font-size="25">···</text>
+    <text x="770" y="264" font-size="16" font-weight="700">末个保留</text>
+    <text x="770" y="285" font-size="15">Last kept</text>
+  </g>
+
+  <!-- Dashed guides show that each solar crossing falls inside a discarded cell. -->
+  <g stroke="#111" stroke-width="2" stroke-dasharray="6 5">
+    <line x1="275" y1="175" x2="275" y2="300"/>
+    <line x1="865" y1="175" x2="865" y2="300"/>
+  </g>
+  <line x1="820" y1="300" x2="820" y2="342" stroke="#111" stroke-width="2"/>
+  <g font-family="Noto Sans CJK SC, Noto Sans SC, Microsoft YaHei, Arial, sans-serif" text-anchor="middle" fill="#111">
+    <text x="270" y="328" font-size="15">舍弃 / Excluded</text>
+    <text x="870" y="328" font-size="15">舍弃 / Excluded</text>
+    <text x="820" y="363" font-size="16" font-weight="700">曝光截止 / Exposure cutoff</text>
+    <text x="550" y="395" font-size="17">只保留完全位于夜晚的 900 秒 slot；两端跨界 slot 均舍弃。</text>
+    <text x="550" y="418" font-size="16">Keep only slots wholly inside night; discard both boundary-crossing slots.</text>
+  </g>
+</svg>
