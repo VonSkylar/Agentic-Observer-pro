@@ -62,6 +62,7 @@ REFINE = _env("REFINE", 0.1)                 # local pointing search step (deg);
 REFINE_ROUNDS = _env("REFINE_ROUNDS", 4)
 REFINE_FIXED_T = _env("REFINE_FIXED_T", 1)
 REFINE_STEPS = tuple((dn * REFINE, de * REFINE) for dn in (-1, 0, 1) for de in (-1, 0, 1) if dn or de) if REFINE > 0 else ()
+CALIBRATION_CACHE = _env("CALIBRATION_CACHE", 0) # reuse projection vectors in offset fitting
 PROJECT_CACHE = _env("PROJECT_CACHE", 0)       # exact shared projection trigonometry
 ADAPTIVE_DURATIONS = _env("ADAPTIVE_DURATIONS", 0) # number of anchor completion breakpoints to add
 JOINT_PROGRAM = _env("JOINT_PROGRAM", 0)       # score the common program during fibre allocation
@@ -599,6 +600,19 @@ class Planner:
             ok += (fib == fiber) == hit
         return ok
 
+    @staticmethod
+    def _vector_rows(rows):
+        return [(unit_vector(alt, az), fiber, hit) for alt, az, fiber, hit in rows]
+
+    def _consistent_vectors(self, cmd, rows, d_alt, d_az) -> int:
+        frame = tangent_frame(cmd[0] + d_alt, (cmd[1] + d_az) % 360.0)
+        ok = 0
+        for vector, fiber, hit in rows:
+            offsets = project_vector(vector, frame)
+            fib = self.grid.classify(*offsets)[0] if offsets is not None else None
+            ok += (fib == fiber) == hit
+        return ok
+
     def _make_offset_grid(self) -> list:
         n, step = self.offset_steps, self.offset_step
         return [(step * i, step * j) for i in range(-n, n + 1) for j in range(-n, n + 1)]
@@ -609,8 +623,12 @@ class Planner:
             self._score_offsets(cmd, past)
 
     def _score_offsets(self, cmd, rows) -> None:
+        consistent = self._consistent
+        if CALIBRATION_CACHE:
+            rows = self._vector_rows(rows)
+            consistent = self._consistent_vectors
         for k, (d_alt, d_az) in enumerate(self.offset_grid):
-            self.offset_scores[k] += self._consistent(cmd, rows, d_alt, d_az)
+            self.offset_scores[k] += consistent(cmd, rows, d_alt, d_az)
 
     def _refine_offset(self) -> None:
         k = max(range(len(self.offset_grid)), key=lambda n: self.offset_scores[n])
@@ -626,13 +644,17 @@ class Planner:
             k = max(range(len(self.offset_grid)), key=lambda m: self.offset_scores[m])
             base_alt, base_az = self.offset_grid[k]
         evidence = list(self.offset_evidence)[-OFFSET_FINE_EVIDENCE:]
-        zero = sum(self._consistent(cmd, rows, 0.0, 0.0) for cmd, rows in evidence)
+        consistent = self._consistent
+        if CALIBRATION_CACHE:
+            evidence = [(cmd, self._vector_rows(rows)) for cmd, rows in evidence]
+            consistent = self._consistent_vectors
+        zero = sum(consistent(cmd, rows, 0.0, 0.0) for cmd, rows in evidence)
         scored = []
         fine = self.offset_step / 5.0
         for i in range(-6, 7):
             for j in range(-6, 7):
                 d_alt, d_az = base_alt + fine * i, base_az + fine * j
-                scored.append((sum(self._consistent(cmd, rows, d_alt, d_az) for cmd, rows in evidence), d_alt, d_az))
+                scored.append((sum(consistent(cmd, rows, d_alt, d_az) for cmd, rows in evidence), d_alt, d_az))
         top = max(score for score, _, _ in scored)
         if top - zero < OFFSET_MARGIN:
             return

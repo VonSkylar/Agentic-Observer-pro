@@ -102,6 +102,35 @@ class CellCacheTests(unittest.TestCase):
                 actions.append(p.plan(START,END,0,0))
         self.assertEqual(*actions)
 
+    def test_calibration_cache_preserves_scores_and_refined_offset(self):
+        from skymath import shift_altaz, tangent_offsets
+        data = fixture()
+        rng = random.Random(6026)
+        a, b = Planner(copy.deepcopy(data)), Planner(copy.deepcopy(data))
+        evidence = []
+        for alt, az in ((45, 359.9), (70, 1), (89.5, 180), (30, 90)):
+            rows = []
+            for _ in range(30):
+                ta, tz = shift_altaz(alt, az, rng.uniform(-1.4, 1.4), rng.uniform(-1.4, 1.4))
+                offsets = tangent_offsets(ta, tz, alt, az)
+                fiber = a.grid.classify(*offsets)[0]
+                if fiber is None:
+                    continue
+                actual = tangent_offsets(ta, tz, alt + .08, (az + .04) % 360)
+                hit = a.grid.classify(*actual)[0] == fiber
+                rows.append((ta, tz, fiber, hit))
+            evidence.append(((alt, az), rows))
+        self.assertTrue(any(not row[3] for _, rows in evidence for row in rows))
+        for planner, enabled in ((a, 0), (b, 1)):
+            planner.offset_evidence.extend(evidence)
+            with patch('planner.CALIBRATION_CACHE', enabled):
+                planner._rescore_offsets(evidence)
+                planner._refine_offset()
+        self.assertEqual(a.offset_grid, b.offset_grid)
+        self.assertEqual(a.offset_scores, b.offset_scores)
+        self.assertEqual(a.offset, b.offset)
+        self.assertNotEqual(a.offset, (0., 0.))
+
 
 if __name__=='__main__':
     unittest.main()

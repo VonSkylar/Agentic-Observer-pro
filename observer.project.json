@@ -11,6 +11,7 @@
   "working_directory": ".",
   "environment": {
     "PYTHONDONTWRITEBYTECODE": "1",
-    "PRO_PROJECT_CACHE": "1"
+    "PRO_PROJECT_CACHE": "1",
+    "PRO_CALIBRATION_CACHE": "1"
   }
 }
