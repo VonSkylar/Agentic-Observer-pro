@@ -137,7 +137,7 @@ paid report confirmation receives the same context. The first long handover is
 retained for decoding conventions, alongside current requests and the latest
 expired handover for continuity. No task-card files are read by the agent.
 
-The night plan can return sourced `report_fault` onsets and `test_window` intervals.
+Fault review returns sourced `report_fault` onsets and `test_window` intervals; night planning extracts terrain and weather.
 The model copies source clock times and UTC offsets; Python converts them to UTC.
 Source request/line references, explicit source dates and night bounds are validated
 before use. The plan focuses on nearby dated lines and undated conventions/corrections;
@@ -145,15 +145,14 @@ fault review and paid confirmation receive the full selected handovers.
 The deterministic scheduler avoids exposures across these boundaries, waits through
 tests without treating them as faults, and reports confirmed camera-work events
 without waiting for a low E signal. Each event is attempted at most once; false-report
-limits, minimum report spacing and paid confirmation remain in effect. Model calls
+cooldowns, minimum report spacing and paid confirmation remain in effect. Historical false reports no longer permanently block new sourced faults; heuristic consecutive errors and sourced errors have separate guards, reset by a successful repair. Model calls
 still occur only at night start and before paid reports. A late or invalid reply
 leaves the rule fallback in control until usable advice arrives; text first received
 after the night's calls is retained for the next nightly stage.
 
-This implements the input/action connection for fault and test handovers, not a
-general interpreter of every weather/terrain instruction. Structured bulletin and
-forecast weather handling remains unchanged. Line references establish source provenance;
-they do not mechanically prove the model's interpretation or time conversion.
+Sourced terrain heights replace the default 50-degree barrier in the corresponding sectors; conflicting limits use the higher safe horizon. Timed weather distinguishes closures from observable thin cloud. Exposure paths are sampled against these restrictions. Source lines, finite numbers, clock dates, signed time zones and adjacent corrections are validated; provenance cannot guarantee semantic accuracy.
+
+Required targets gain urgency only when few geometrically feasible nights remain and a qualifying exposure is predicted. Short requests choose a feasible completion group and enforce issued/deadline bounds; multi-night requests retain opportunistic fibre filling. Disable the new scheduling components with `PRO_REQUEST_PLANNING=0` and `PRO_REQUIRED_WINDOW_PLANNING=0` for comparisons.
 
 For `deepseek-flash` on the official `api.deepseek.com` endpoint, the client defaults
 to disabled thinking for bounded advisory JSON: a 2000-token cap with thinking on
@@ -168,12 +167,12 @@ Run the focused regression suite with `python -m unittest discover -s tests -v`.
 
 ## Model cost controls
 
-The handover parser, nightly fault review, and paid-report confirmation remain in place; the observe planner and fault thresholds are unchanged.
+The same two nightly stages and occasional paid-report confirmation handle the new information; there are no per-decision model calls. The environment stage omits duplicate instrument excerpts but retains original lines. Official DeepSeek Flash non-thinking requests default to temperature 0 (`PRO_MODEL_TEMPERATURE` override). Output lengths can change, so full-run costs must be measured.
 Only when there is no public request text is the night weather calculated directly using the exact structured rules from the prompt.
 Unknown short and encoded texts still go to the model. Unicode is sent directly, and reusable source text comes before changing clocks/tables for provider prefix caching.
 Original source lines and candidate quotes are retained. Only identical stage/system/input requests reuse replies; changed dates or quality evidence require a new request.
 
-`PRO_MODEL_MAX_RETRIES=2` retries only network errors and transient HTTP errors. HTTP 401/402 disables new requests for this run.
+`PRO_MODEL_MAX_RETRIES=2` retries only network errors and transient HTTP errors, respecting Retry-After within the overall request timeout. HTTP 401/402 disables new requests for this run.
 Delivered invalid/truncated replies are not blindly retried at additional cost. Failures keep the original rule fallback.
 `PRO_MODEL_MAX_CALLS` counts actual HTTP attempts per card, including retries; `PRO_MODEL_CACHE_SIZE` defaults to 128.
 `PRO_MODEL_STRUCTURED_WEATHER=0` restores model weather calls even without handover text. See `.env.example` for overrides.

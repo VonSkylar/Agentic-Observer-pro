@@ -75,6 +75,16 @@ REQUIRED_BONUS = _env("REQUIRED_BONUS", 80.0)  # planning value of rescuing one 
 REQ_P_LO = _env("REQ_P_LO", 0.95)             # P(success) ramps from 0 at this share of the needed reach ...
 REQ_P_HI = _env("REQ_P_HI", 1.35)             # ... to 1 at this share
 REQUEST_MULT = _env("REQUEST_MULT", 3.0)
+REQUEST_PLANNING = _env("REQUEST_PLANNING", 1)
+REQUEST_TIGHT_HOURS = _env("REQUEST_TIGHT_HOURS", 24.0)
+REQUEST_MARGIN = _env("REQUEST_MARGIN", 1.12)
+REQUEST_SAMPLE_SECONDS = _env("REQUEST_SAMPLE_SECONDS", 1800)
+REQUIRED_RESCUE = _env("REQUIRED_RESCUE", 1.5)
+REQUIRED_WINDOW_PLANNING = _env("REQUIRED_WINDOW_PLANNING", 1)
+REQUIRED_RESCUE_NIGHTS = _env("REQUIRED_RESCUE_NIGHTS", 2)
+TERRAIN_MARGIN = _env("TERRAIN_MARGIN", 0.6)
+ENV_SAMPLE_SECONDS = _env("ENV_SAMPLE_SECONDS", 300)
+THIN_CLOUD_FACTOR = _env("THIN_CLOUD_FACTOR", 0.85)
 REQ_CALIB_POWER = _env("REQ_CALIB_POWER", 0.0)  # per-target calibration after failed tries (0 = off; did not help)
 FORECAST_DISCOUNT = _env("FORECAST_DISCOUNT", 0.2)
 REQ_CALENDAR = _env("REQ_CALENDAR", 0)        # compare with the best future night (public ephemeris), not an ideal sky
@@ -208,10 +218,17 @@ class Planner:
         self.notices: set[tuple[str, str]] = set()
         self.terrain: set[str] = set()
         self.extra_avoid: set[str] = set()       # directions an advisor asked to avoid tonight
+        self.terrain_heights = {}
+        self.weather_windows = []
+        self.environment_now = None
         self.duration_scale = 1.0
         self.fast_level = 0
         self.request_bonus: dict[int, float] = {}
         self.request_threshold: dict[int, float] = {}
+        self.request_groups = []
+        self.request_terms = {}
+        self.request_plan_key = None
+        self.required_window_counts = {}
         # season plan: targets worth completing (value density w*flux above a cut that fills the capacity)
         self.density_order = sorted(range(len(rows)), key=lambda i: -self.weight[i] * self.flux[i])
         self.planned = [False] * len(rows)
@@ -289,8 +306,11 @@ class Planner:
                  for start, end in self.nights]
         self.first_night = [len(self.nights)] * len(self.ra)
         self.last_night = [-1] * len(self.ra)
+        self.required_windows = {i: [] for i in self.active if self.required[i]}
         for i in self.active:
             h = self.hmax[i]
+            ideal = 1.0 / (self.q0 * normalized_airmass(max(1.0, 90.0 - abs(self.dec[i] - self.lat))) ** self.airmass_exponent)
+            required_span = min(self.max_exposure, 0.5 * self.f0t0 / max(1e-9, self.flux[i] * ideal))
             for k, (l0, span) in enumerate(spans):
                 if h >= 180.0:
                     overlap = span
@@ -301,6 +321,8 @@ class Planner:
                     if self.first_night[i] > k:
                         self.first_night[i] = k
                     self.last_night[i] = k
+                    if self.required[i] and overlap / SIDEREAL_DEG_PER_SECOND >= required_span:
+                        self.required_windows[i].append(k)
 
     # --- messages and results --------------------------------------------------------------------
 
@@ -322,6 +344,7 @@ class Planner:
         old = self.request_bonus
         self.request_bonus = {}
         self.request_threshold = {}
+        groups = []
         for request in requests:
             # A request that already met its minimum still appears until its deadline
             # with remaining_count 0; its reward is settled, so it adds no value.
@@ -331,6 +354,11 @@ class Planner:
             completed = set(request.get("completed_target_ids", []))
             unit = REQUEST_MULT * float(request["completion_reward"]) / remaining
             threshold = float(request["completion_factor_threshold"])
+            candidates = [self.index_of[t] for t in request["target_ids"] if t not in completed and t in self.index_of]
+            if float(request["completion_reward"]) > 0 and candidates:
+                groups.append({"id": request["request_id"], "remaining": remaining, "candidates": candidates,
+                               "reward": float(request["completion_reward"]), "threshold": threshold,
+                               "issued": parse_utc(request["issued_at_utc"]), "deadline": parse_utc(request["deadline_utc"])})
             for target_id in request["target_ids"]:
                 if target_id in completed or target_id not in self.index_of:
                     continue
@@ -341,9 +369,118 @@ class Planner:
                 self.request_threshold[i] = max(self.request_threshold.get(i, 0.0), threshold)
                 if self.hmax[i] > 0.0 and i not in self.active:
                     self.active.append(i)
+        self.request_groups = groups
         if old != self.request_bonus:
             self.vdirty.update(old)
             self.vdirty.update(self.request_bonus)
+
+    def _request_opportunity(self, i, group, now):
+        """Cheap optimistic feasibility from PUBLIC visibility, Moon and remaining nights.
+
+        Only a single exposure counts. Keep the cheapest feasible slot for choosing
+        the group's remaining targets; actual gains recheck quality and deadlines.
+        """
+        best = None
+        for start, end in self.nights:
+            start, end = max(start, now, group["issued"]), min(end, group["deadline"])
+            span = (end - start).total_seconds()
+            if span < self.min_exposure:
+                continue
+            lst = local_sidereal_deg(start, self.lon)
+            transit = (-wrap180(lst - self.ra[i])) / SIDEREAL_DEG_PER_SECOND
+            samples = {0.0, max(0.0, min(span - self.min_exposure, transit))}
+            samples.update(range(0, int(span), REQUEST_SAMPLE_SECONDS))
+            for delay in sorted(samples):
+                at = start + timedelta(seconds=delay)
+                l0 = lst + delay * SIDEREAL_DEG_PER_SECOND
+                alt, az = radec_to_altaz(self.ra[i], self.dec[i], l0, self.lat)
+                if alt < self.min_alt + ALT_MARGIN_DEG or self._environment_factor(alt, az, at) <= 0:
+                    continue
+                lunar = Moon(at, l0, self.lat, self.lunar_model).lunar_factor(self.ra[i], self.dec[i])
+                model = lunar / (self.q0 * normalized_airmass(alt) ** self.airmass_exponent)
+                # A bad current sample cannot prove the rest of the night impossible.
+                # Feasibility is optimistic; actual exposure gains still use measured scale.
+                q = max(1.0, self.scale)
+                duration = min(self.max_exposure, max(self.min_exposure, math.ceil(REQUEST_MARGIN * group["threshold"] * self.f0t0
+                                                           / max(1e-9, self.flux[i] * model * q))))
+                finish = at + timedelta(seconds=duration)
+                if duration > self.max_exposure or finish > end:
+                    continue
+                alt2, az2 = radec_to_altaz(self.ra[i], self.dec[i], l0 + duration * SIDEREAL_DEG_PER_SECOND, self.lat)
+                if alt2 < self.min_alt + ALT_MARGIN_DEG or self._environment_factor(alt2, az2, finish) <= 0:
+                    continue
+                end_model = lunar / (self.q0 * normalized_airmass(alt2) ** self.airmass_exponent)
+                if self.flux[i] * duration * min(model, end_model) * q / self.f0t0 < group["threshold"]:
+                    continue
+                item = (duration, at, i)
+                if best is None or item < best:
+                    best = item
+        return best
+
+    def _prepare_requests(self, now, night_index):
+        if not REQUEST_PLANNING:
+            return
+        signature = tuple((g["id"], g["remaining"], tuple(g["candidates"]), g["deadline"], g["threshold"], g["reward"])
+                          for g in self.request_groups)
+        key = (signature, night_index, int(now.timestamp()) // 900, round(self.scale, 1),
+               tuple(sorted(self.terrain_heights.items())), repr(self.weather_windows))
+        # on_requests restores raw bonuses each turn; cached selection must restore them too.
+        if key != self.request_plan_key:
+            terms = {}
+            for group in self.request_groups:
+                if (group["deadline"] - group["issued"]).total_seconds() > REQUEST_TIGHT_HOURS * 3600:
+                    # Multi-night requests benefit from opportunistic fibre filling.
+                    # Reserve explicit group commitment for genuinely short windows.
+                    unit = REQUEST_MULT * group["reward"] / group["remaining"]
+                    for i in group["candidates"]:
+                        terms.setdefault(i, []).append((group["issued"], group["deadline"], group["threshold"], unit))
+                    continue
+                candidates = [v for i in group["candidates"] if (v := self._request_opportunity(i, group, now)) is not None]
+                candidates.sort()
+                chosen = candidates[:group["remaining"]]
+                if len(chosen) < group["remaining"]:
+                    continue
+                budget = sum(max(0, (min(end, group["deadline"]) - max(start, now, group["issued"])).total_seconds())
+                             for start, end in self.nights)
+                # A conservative serial schedule is sufficient; if it cannot fit,
+                # discount rather than rejecting possible simultaneous fibre hits.
+                feasibility = min(1.0, budget / max(1.0, sum(v[0] for v in chosen)))
+                unit = REQUEST_MULT * group["reward"] / group["remaining"] * feasibility
+                for _, _, i in chosen:
+                    terms.setdefault(i, []).append((group["issued"], group["deadline"], group["threshold"], unit))
+            self.request_terms = terms
+            self.request_plan_key = key
+        old = self.request_bonus
+        self.request_bonus = {i: sum(term[3] for term in terms) for i, terms in self.request_terms.items()}
+        self.request_threshold = {i: max(term[2] for term in terms) for i, terms in self.request_terms.items()}
+        if old != self.request_bonus:
+            self.vdirty.update(old)
+            self.vdirty.update(self.request_bonus)
+
+    def _request_gain(self, i, duration, model, now):
+        if i not in self.request_bonus:
+            return 0.0
+        terms = self.request_terms.get(i, []) if REQUEST_PLANNING else [(now, self.survey_end, self.request_threshold[i], self.request_bonus[i])]
+        finish = now + timedelta(seconds=duration)
+        return sum(unit * min(1.0, max(0.0, (self.flux[i] * duration * model * self.scale / self.f0t0
+                    / max(1e-6, threshold) - REQ_P_LO) / (REQ_P_HI - REQ_P_LO)))
+                   for issued, deadline, threshold, unit in terms if issued <= now and finish <= deadline)
+
+    def set_environment(self, terrain, weather, now):
+        self.terrain_heights = {item["direction"]: item["altitude_deg"] for item in terrain}
+        self.weather_windows = list(weather)
+        self.environment_now = now
+
+    def _environment_factor(self, alt, az, at):
+        for direction, height in self.terrain_heights.items():
+            if _az_distance(az, DIRECTION_AZ[direction]) <= 60.0 and alt < height + TERRAIN_MARGIN:
+                return 0.0
+        factor = 1.0
+        for item in self.weather_windows:
+            if item["start"] <= at < item["end"] and ("ALL" in item["directions"] or any(
+                    _az_distance(az, DIRECTION_AZ[d]) <= 45.0 for d in item["directions"])):
+                factor = min(factor, 0.0 if item["effect"] == "closed" else THIN_CLOUD_FACTOR)
+        return factor
 
     def _resync(self, message: dict) -> None:
         """Part of the recent data was lost: restart the factor estimates from the engine's best scores."""
@@ -355,11 +492,15 @@ class Planner:
             self.cur[i] = score / self.weight[i]
         self.active = [i for i in range(len(self.ids)) if self.hmax[i] > 0.0]
         self.vcache = None
+        self.required_window_night = None
+        self.request_plan_key = None
         self.pending = {}
         self.log(f"state_resync: {len(best)} targets keep a score; plan rebuilt")
 
     def site_closed(self) -> bool:
-        return any(kind in CLOSED_KINDS and direction == "ALL" for kind, direction in self.notices)
+        return (any(kind in CLOSED_KINDS and direction == "ALL" for kind, direction in self.notices)
+                or any(item["effect"] == "closed" and "ALL" in item["directions"]
+                       and item["start"] <= self.environment_now < item["end"] for item in self.weather_windows))
 
     def all_sky_weather(self) -> bool:
         return any(direction == "ALL" and kind in SKY_WEATHER_KINDS for kind, direction in self.notices)
@@ -401,6 +542,8 @@ class Planner:
             matched = self._band(ratio_match * prediction["band_model"]) == self.pending_program
             factor = factor_if_match if matched else factor_if_miss
             self.factor[i] = max(self.factor[i], min(1.0, factor))
+            if self.factor[i] >= 0.5:
+                self.required_window_counts.pop(i, None)
             if self.required[i] and self.factor[i] < 0.5:
                 pred = prediction.get("pred", 0.0)
                 if pred > 0 and factor < 0.97:
@@ -583,9 +726,10 @@ class Planner:
         return None
 
     def _direction_factor(self, alt: float, az: float) -> float:
-        factor = 1.0
+        factor = self._environment_factor(alt, az, self.environment_now) if self.environment_now is not None else 1.0
         for direction in self.terrain:
-            if direction in DIRECTION_AZ and alt < 50.0 and _az_distance(az, DIRECTION_AZ[direction]) <= 60.0:
+            if (direction not in self.terrain_heights and direction in DIRECTION_AZ
+                    and alt < 50.0 and _az_distance(az, DIRECTION_AZ[direction]) <= 60.0):
                 return 0.0
         for kind, direction in self.notices:
             if direction not in DIRECTION_AZ:
@@ -636,6 +780,13 @@ class Planner:
         if PARTIAL_DISCOUNT < 1.0 and night_index != self.plan_night:
             self._season_plan(now, night_index)
         self.update_scale(hours)
+        self._prepare_requests(now, night_index)
+        if getattr(self, "required_window_night", None) != night_index:
+            self.required_window_night = night_index
+            self.required_window_counts = {i: remaining for i, windows in self.required_windows.items()
+                                           if self.factor[i] < 0.5 and 0 < (remaining := len(windows) - bisect.bisect_left(windows, night_index)) <= REQUIRED_RESCUE_NIGHTS}
+            if not REQUIRED_WINDOW_PLANNING:
+                self.required_window_counts = {}
         self.night_index = night_index
         lst = local_sidereal_deg(now, self.lon)
         horizon = min(night_end, self.survey_end)
@@ -691,7 +842,7 @@ class Planner:
             visible[i] = None
             # proxy priority: planning value x a rough airmass factor x urgency (no Moon, no direction)
             nights_left = self.last_night[i] - night_index + 1
-            proxy.append((v * (sin_alt ** 0.6) * (1.0 + URGENCY / (nights_left if nights_left > 1 else 1)), i))
+            proxy.append((v * (sin_alt ** 0.6) * (1.0 + URGENCY / max(1, nights_left)), i))
             if N_DENSE:
                 # plain science still to gain here, binned on the sky at roughly one field size
                 key = (int((self.ra[i] * cd[i]) // DENSE_BIN_DEG), int((self.dec[i] + 90.0) // DENSE_BIN_DEG))
@@ -745,10 +896,24 @@ class Planner:
             its best exposure counts (a partial exposure is wasted if the target is redone later)."""
             return top_mult * (v / top_mult) ** KAPPA if KAPPA != 1.0 else v
 
+        gain_cache = {}
         def gain(i, T):
+            key = (i, T)
+            if key not in gain_cache:
+                gain_cache[key] = uncached_gain(i, T)
+            return gain_cache[key]
+
+        def uncached_gain(i, T):
             alt, az, m0, m1, up, mult = full(i)
             if up < T:
                 return 0.0
+            if self.terrain_heights or self.weather_windows:
+                # A direction/altitude limit must hold throughout the exposure,
+                # including a target drifting into a closed compass sector.
+                for seconds in list(range(ENV_SAMPLE_SECONDS, int(T), ENV_SAMPLE_SECONDS)) + [T]:
+                    a, z = radec_to_altaz(self.ra[i], self.dec[i], lst + seconds * SIDEREAL_DEG_PER_SECOND, self.lat)
+                    if self._environment_factor(a, z, now + timedelta(seconds=seconds)) <= 0:
+                        return 0.0
             model = m0 + (m1 - m0) * min(1.0, T / 3600.0)
             reach = min(1.0, self.flux[i] * T * model * scale / self.f0t0)
             m = self.multipliers[self._band(model * band_scale)]
@@ -758,16 +923,17 @@ class Planner:
             if self.required[i] and self.factor[i] < 0.5:
                 raw = self.flux[i] * T * model * self.scale / self.f0t0 / 0.5 * self.req_calib.get(i, 1.0)
                 bonus = REQUIRED_BONUS * min(1.0, max(0.0, (raw - REQ_P_LO) / (REQ_P_HI - REQ_P_LO)))
+                rescue = i in self.required_window_counts and raw >= REQ_P_HI
+                opportunities = self.required_window_counts[i] if rescue else self.last_night[i] - night_index + 1
+                if rescue:
+                    bonus *= 1.0 + REQUIRED_RESCUE / max(1, opportunities)
                 target_best = self.best_future_model(i, night_index) if REQ_CALENDAR else self.ideal_model[i]
-                if REQ_TIMING and model < REQ_TIMING * target_best and self.last_night[i] - night_index >= REQ_TIMING_NIGHTS:
+                if REQ_TIMING and model < REQ_TIMING * target_best and opportunities > REQ_TIMING_NIGHTS:
                     bonus *= REQ_TIMING_DISCOUNT   # a better moment for this target will come
-                if self.bad_forecast and self.last_night[i] - night_index >= REQ_TIMING_NIGHTS:
+                if self.bad_forecast and opportunities > REQ_TIMING_NIGHTS:
                     bonus *= FORECAST_DISCOUNT     # tonight is forecast bad over the whole sky
                 g += bonus
-            if i in self.request_bonus:
-                threshold = self.request_threshold.get(i, 0.5)
-                raw = self.flux[i] * T * model * self.scale / self.f0t0 / max(1e-6, threshold)
-                g += self.request_bonus[i] * min(1.0, max(0.0, (raw - REQ_P_LO) / (REQ_P_HI - REQ_P_LO)))
+            g += self._request_gain(i, T, model, now)
             return g * mult
 
         def quick(i, T):
@@ -783,10 +949,9 @@ class Planner:
                 g *= PARTIAL_DISCOUNT
             if self.required[i] and self.factor[i] < 0.5:
                 raw = self.flux[i] * T * model * self.scale / self.f0t0 / 0.5
-                g += REQUIRED_BONUS * min(1.0, max(0.0, (raw - REQ_P_LO) / (REQ_P_HI - REQ_P_LO)))
-            if i in self.request_bonus:
-                raw = self.flux[i] * T * model * self.scale / self.f0t0 / max(1e-6, self.request_threshold.get(i, 0.5))
-                g += self.request_bonus[i] * min(1.0, max(0.0, (raw - REQ_P_LO) / (REQ_P_HI - REQ_P_LO)))
+                rescue = 1.0 + REQUIRED_RESCUE / max(1, self.required_window_counts[i]) if i in self.required_window_counts and raw >= REQ_P_HI else 1.0
+                g += REQUIRED_BONUS * rescue * min(1.0, max(0.0, (raw - REQ_P_LO) / (REQ_P_HI - REQ_P_LO)))
+            g += self._request_gain(i, T, model, now)
             return g * mult, T
 
         durations = [T for T in LEVEL_DURATIONS[min(level, 3)] if T <= seconds_left and T >= MIN_T]

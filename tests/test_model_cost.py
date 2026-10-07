@@ -26,6 +26,13 @@ class Response:
 
 
 class ModelCostTests(unittest.TestCase):
+    def test_flash_non_thinking_temperature_does_not_change_other_providers(self):
+        for base, model, expected in [("https://api.deepseek.com", "deepseek-flash", 0),
+                                      ("https://api.kimi.com/coding/v1", "k3", None)]:
+            with patch.dict("os.environ", {"OPENAI_BASE_URL": base, "OPENAI_MODEL": model}, clear=True), patch("urllib.request.urlopen", return_value=Response()) as request:
+                LLMClient()._request("s", {}, 10)
+                self.assertEqual(json.loads(request.call_args.args[0].data).get("temperature"), expected)
+
     def test_unicode_is_lossless_and_not_literal_escape_text(self):
         source = {"reason": "导星相机訂正 カメラ", "path": r"literal\n"}
         with patch.dict("os.environ", {}, clear=True), patch("urllib.request.urlopen", return_value=Response()) as request:
@@ -87,6 +94,24 @@ class ModelCostTests(unittest.TestCase):
             self.assertEqual(call.answer, {"ok": True})
             self.assertEqual(request.call_count, 2)
             self.assertLessEqual(request.call_args_list[1].kwargs["timeout"], request.call_args_list[0].kwargs["timeout"])
+
+    def test_rate_limit_waits_for_retry_after_then_succeeds(self):
+        with patch.dict("os.environ", {}, clear=True), patch("time.sleep") as sleep, patch("urllib.request.urlopen", side_effect=[
+                urllib.error.HTTPError("url", 429, "busy", {"Retry-After": "7"}, None), Response()]) as request:
+            call = LLMClient().submit("night_plan", "s", {}, 100)
+            self.assertTrue(call.wait(2))
+            self.assertEqual(call.answer, {"ok": True})
+            sleep.assert_called_once_with(7.0)
+            self.assertEqual(request.call_count, 2)
+
+    def test_rate_limit_does_not_retry_before_long_server_delay(self):
+        with patch.dict("os.environ", {}, clear=True), patch("time.sleep") as sleep, patch("urllib.request.urlopen", side_effect=
+                urllib.error.HTTPError("url", 429, "busy", {"Retry-After": "120"}, None)) as request:
+            call = LLMClient().submit("night_plan", "s", {}, 100)
+            self.assertTrue(call.wait(2))
+            self.assertEqual(call.error, "HTTP_429")
+            sleep.assert_not_called()
+            self.assertEqual(request.call_count, 1)
 
     def test_usage_counts_uncollected_completions_and_reasoning_once(self):
         with patch.dict("os.environ", {"OPENAI_BASE_URL": "https://api.deepseek.com/v1", "OPENAI_MODEL": "deepseek-flash"}, clear=True), patch(

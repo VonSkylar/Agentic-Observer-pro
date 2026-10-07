@@ -223,7 +223,7 @@ class HandoverTests(unittest.TestCase):
         self.assertEqual(agent.handover.records["R1"]["reason"], TEXT)
         self.assertEqual(RulesOnly().start_night("2026-10-01", [], [], {}, 100, 0, self.context), (None, None))
 
-    def test_paid_scheduled_report_can_be_vetoed_and_respects_false_report_cap(self):
+    def test_paid_scheduled_report_can_be_vetoed_but_lifetime_errors_do_not_disable_new_faults(self):
         agent = agent_at()
         agent.handover.apply(Handover.validate([operation()], self.context))
         agent.free_allowance = 0
@@ -234,7 +234,31 @@ class HandoverTests(unittest.TestCase):
         agent.handover.attempted_faults.clear()
         agent.false_reports = 8
         agent._model_agrees.return_value = True
-        self.assertIsNone(agent._handover_report(1.5, {"now_utc": "2026-10-02T01:30:00Z"}))
+        self.assertEqual(agent._handover_report(1.5, {"now_utc": "2026-10-02T01:30:00Z"})["action"], "report")
+
+    def test_correct_repair_rearms_consecutive_protection(self):
+        agent = agent_at()
+        agent.false_reports = 20
+        agent.false_since_correct = 8
+        agent.sourced_false = 3
+        agent.episode_blocked = True
+        agent._on_report_result({"correct": True}, 1)
+        self.assertEqual(agent.false_reports, 20)
+        self.assertEqual(agent.false_since_correct, 0)
+        self.assertEqual(agent.sourced_false, 0)
+        self.assertFalse(agent.episode_blocked)
+        agent._fault_verdict.return_value = True
+        self.assertEqual(agent._maybe_report(4, {"now_utc": "2026-10-02T04:00:00Z"})["action"], "report")
+
+    def test_repeated_bad_sources_cool_down_without_permanent_disable(self):
+        agent = agent_at()
+        agent.sourced_false = 3
+        agent.last_report_hours = 0
+        op = {"kind": "report_fault", "start": START + timedelta(hours=49), "end": START + timedelta(hours=49),
+              "source_request_id": "new"}
+        agent.handover.apply([op])
+        self.assertIsNone(agent._handover_report(24, {"now_utc": format_utc(START + timedelta(hours=24))}))
+        self.assertEqual(agent._handover_report(49, {"now_utc": format_utc(op["start"])})["action"], "report")
 
     def test_late_background_reply_applies_schedule(self):
         agent = agent_at()

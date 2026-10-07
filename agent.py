@@ -52,7 +52,9 @@ E_RECOVER = _env("E_RECOVER", 0.95)       # after a false probe, wait until E is
 MAX_PAID_FALSE = _env("MAX_PAID", 6)
 PERSIST_NIGHTS = _env("PERSIST_NIGHTS", 3)
 E_PAID_STEP = _env("E_PAID_STEP", 0.05)   # ... minus this per paid false probe so far
-MAX_FALSE_REPORTS = 8
+MAX_FALSE_REPORTS = _env("MAX_FALSE_REPORTS", 8)  # consecutive unsuccessful heuristic probes
+MAX_SOURCED_FALSE = _env("MAX_SOURCED_FALSE", 3)  # consecutive sourced mistakes; re-arm after repair
+SOURCED_COOLDOWN_HOURS = _env("SOURCED_COOLDOWN_HOURS", 48.0)
 # The participant guide: an earthquake (announced in the bulletin) lowers instrument efficiency, the loss fades
 # night by night, and a report does not repair it. So E drops right after an earthquake are not reportable, and
 # while its effect may last only a new step down in E (a fresh drop from the preceding hours) is fault evidence.
@@ -120,6 +122,8 @@ class ObserverAgent:
         self.false_reports = 0
         self.false_since_correct = 0
         self.paid_false = 0
+        self.sourced_false = 0
+        self.pending_report_sourced = False
         self.last_report_hours = -1e9
         self.ref_from_hours = -1e9
         self.episode_blocked = False
@@ -203,9 +207,11 @@ class ObserverAgent:
         if self.night_seen != night_index:
             self.night_seen = night_index
             self.handover.apply([])
+            self.handover.weather = []
             self._night_advice(night_start, payload, hours)
         else:
             self._apply_advice(*self.advisor.poll())
+        planner.set_environment(self.handover.terrain.values(), self.handover.weather, now)
         self.scale_hours.setdefault(int(hours), []).append(self.planner.scale)
         report = self._handover_report(hours, payload)
         if report is not None:
@@ -319,12 +325,18 @@ class ObserverAgent:
         if plan is not None:
             self.planner.bad_forecast = plan["bad_night"]
             self.planner.extra_avoid = set(plan["avoid_directions"])
-            self.handover.apply(plan.get("operations", []))
+            self.handover.add_operations(plan.get("operations", []))
+            self.handover.apply_environment(plan.get("terrain", []), plan.get("weather", []))
+            if plan.get("terrain") or plan.get("weather"):
+                log(f"llm environment {self.advisor.night_date}: {len(self.handover.terrain)} terrain sectors, {len(self.handover.weather)} weather intervals")
             if self.handover.operations:
                 log(f"llm handover {self.advisor.night_date}: {len(self.handover.operations)} validated operations")
             log(f"llm night plan {self.advisor.night_date}: bad_night={plan['bad_night']} avoid={plan['avoid_directions']} ({plan['reason']})")
         if fault is not None:
             self.fault_likely = fault["fault_likely"]
+            self.handover.add_operations(fault.get("operations", []))
+            if fault.get("operations"):
+                log(f"llm handover {self.advisor.night_date}: {len(fault['operations'])} validated operations")
             log(f"llm fault review {self.advisor.night_date}: fault_likely={fault['fault_likely']:.2f} ({fault['reason']})")
 
     def _scale_ref(self) -> float:
@@ -357,15 +369,23 @@ class ObserverAgent:
 
     def _handover_report(self, hours: float, payload: dict):
         """A sourced scheduled fault need not wait for E to drop. Never retry the same event."""
-        if self.false_reports >= MAX_FALSE_REPORTS or hours - self.last_report_hours < MIN_REPORT_SPACING_HOURS:
+        if hours - self.last_report_hours < MIN_REPORT_SPACING_HOURS:
             return None
         due = self.handover.due_fault(parse_utc(payload["now_utc"]))
-        if due is None or (self.free_left() <= 0 and self.paid_false >= MAX_PAID_FALSE):
+        if due is None:
             return None
+        if getattr(self, "sourced_false", 0) >= MAX_SOURCED_FALSE:
+            if hours - self.last_report_hours < SOURCED_COOLDOWN_HOURS:
+                return None
+            # Only a fresh source event after the cooldown may re-arm this path.
+            if (due["start"] - self.start).total_seconds() / 3600 <= self.last_report_hours:
+                return None
+            self.sourced_false = 0
         self.handover.attempted_faults.add(due["start"])
         if not self._model_agrees(hours, payload):
             return None
         self.last_report_hours = hours
+        self.pending_report_sourced = True
         self.reports += 1
         log(f"pro: handover report at {payload['now_utc']} (source {due['source_request_id']})")
         return {"action": "report", "reason": "handover: confirmed guider-camera work"}
@@ -375,12 +395,13 @@ class ObserverAgent:
 
         A report costs no time, its answer arrives at once, and the first false reports after each correct
         one are free: spend free probes readily, paid ones only on strong, lasting evidence."""
-        if self.false_reports >= MAX_FALSE_REPORTS or hours - self.last_report_hours < MIN_REPORT_SPACING_HOURS:
+        if self.false_since_correct >= MAX_FALSE_REPORTS or hours - self.last_report_hours < MIN_REPORT_SPACING_HOURS:
             return None
         if hours - self.quake_onset_hours < QUAKE_HOLD_HOURS:
             return None   # the earthquake explains the drop; a report would not repair it
         if self._fault_verdict(hours, payload) and self._model_agrees(hours, payload):
             self.last_report_hours = hours
+            self.pending_report_sourced = False
             self.reports += 1
             log(f"pro: report at {payload['now_utc']} (quality below what the program bands allow), free left {self.free_left()}")
             return {"action": "report", "reason": "quality level below what the program bands allow"}
@@ -485,11 +506,15 @@ class ObserverAgent:
             log(f"pro: report correct, fault repaired (delta {result.get('score_delta')})")
             self.correct_reports += 1
             self.false_since_correct = 0
+            self.sourced_false = 0
+            self.episode_blocked = False
             self.planner.forget_quality_history()
             self.ref_from_hours = hours
         else:
             self.false_since_correct += 1
             self.false_reports += 1
+            if getattr(self, "pending_report_sourced", False):
+                self.sourced_false = getattr(self, "sourced_false", 0) + 1
             self.episode_blocked = True
             self.blocked_at_hour = int(hours)
             if self.false_since_correct > self.free_allowance:

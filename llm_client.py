@@ -14,6 +14,7 @@ k3 only accepts the default temperature, so none is sent.
 from __future__ import annotations
 
 import copy
+from email.utils import parsedate_to_datetime
 import hashlib
 import json
 from collections import OrderedDict
@@ -74,6 +75,7 @@ class Call:
     def _run(self, client, system, user, timeout) -> None:
         started = time.monotonic()
         for attempt in range(client.max_retries):
+            retry_after = None
             remaining = timeout - (time.monotonic() - started)
             if remaining <= 0 or client.disabled_reason:
                 self.error = client.disabled_reason or "timeout"
@@ -88,13 +90,22 @@ class Call:
                     client.disable(self.error)
                 if exc.code not in (408, 429, 500, 502, 503, 504):
                     break  # auth/balance/parameter errors cannot be fixed by retrying
+                header = exc.headers.get("Retry-After") if exc.headers else None
+                if header:
+                    try:
+                        retry_after = max(0.0, float(header))
+                    except ValueError:
+                        try:
+                            retry_after = max(0.0, parsedate_to_datetime(header).timestamp() - time.time())
+                        except (TypeError, ValueError, OverflowError):
+                            pass
             except (urllib.error.URLError, OSError) as exc:
                 self.error = type(exc).__name__
             except (ValueError, KeyError, IndexError, TypeError) as exc:
                 self.error = type(exc).__name__
                 break  # a delivered, billed reply must not trigger blind paid retries
             if attempt + 1 < client.max_retries:
-                delay = 1.0 + attempt
+                delay = max(1.0 + attempt, retry_after or 0.0)
                 if time.monotonic() - started + delay >= timeout:
                     break
                 time.sleep(delay)
@@ -142,6 +153,7 @@ class LLMClient:
         if thinking == "auto":
             thinking = "disabled" if deepseek_flash else None
         self.thinking = thinking
+        self.temperature = float(os.environ.get("PRO_MODEL_TEMPERATURE", "0")) if deepseek_flash and thinking == "disabled" else None
         self.max_tokens = int(os.environ.get("PRO_MODEL_MAX_TOKENS",
                                              "8192" if deepseek_flash and thinking == "enabled" else "2000"))
         self.reasoning_effort = os.environ.get("PRO_MODEL_REASONING_EFFORT", "low" if deepseek_flash else "").strip()
@@ -213,6 +225,8 @@ class LLMClient:
         }
         if self.thinking is not None:
             payload["thinking"] = {"type": self.thinking}
+        if self.temperature is not None:
+            payload["temperature"] = self.temperature
         if self.thinking == "enabled" and self.reasoning_effort:
             payload["reasoning_effort"] = self.reasoning_effort
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
