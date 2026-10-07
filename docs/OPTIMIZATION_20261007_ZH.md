@@ -51,3 +51,20 @@
 - C6：PRO_PROJECT_CACHE=1 + PRO_CALIBRATION_CACHE=1。将 C5 同样的精确投影复用扩展到粗网格偏差评分和细网格校准；目标向量每批证据只计算一次、中心框架每个试探偏差只计算一次。保留全部证据、候选网格、排序/平局规则和校准频率。模拟跨方位零点及近天顶的命中/漏失后，粗网格分数、扩展网格及非零精细偏差与原实现完全一致。65 项测试通过；正式模型与长卡效果仍未验证。
 
 所有候选功能通过 PRO_* 开关控制；C6 manifest 只启用两种几何复用，未启用 C2/C3/C4 的策略改动。C1 精确光纤集合缓存默认开启。当前 main 保持合作者原状。
+
+## 交接与当前结论
+
+- C6 commit 29aaef14d1b450da911033be6fd5a02b7428bd51，revision 167e80d4-7980-41ba-b8bc-fcfba74c21c9，上传已成功。17:36 北京时间 C5/C6 仍准备中，正式 evaluations 为 0；C5 实际 manifest 已核对。
+- C6 校准合成微基准：20 批公开合成命中/漏失证据，关闭/开启交替两轮；约 1.794→1.085 秒及 1.790→1.081 秒，所有偏差评分相等。仅为该样本约 40% 的计算节省，不代表整卡或正式成绩。
+- 固定档位基线四卡完成：L1 6423.774336，L3 7005.604063，L2 6505.529198，L4 6975.421709。C1 前三卡完全同分；部分较慢本地卡仍运行，不把未完成结果算入完整均分。
+- 机器可读快照见 LOCAL_RESULTS_20261007.json，记录各次实际源文件哈希、参数、引擎哈希、完整计分/时钟和 pending_cards。源码快照可能在提交前生成，metadata.commit 仅是当时 HEAD，**精确代码身份以 source_hashes 为准**。C4 本地快照与最终取整后守卫差异已在前文说明。C2 用自动档，其余固定 0，不混同对照。
+- 17:35 查询已有正式 batch 891138fa-d7eb-44ff-a5a0-a804a59ed32d 仍运行：A 22009.843154、C 25786.029438、D 31642.283799，B 正在运行，A1/B1/C1/D1 排队；完整均分尚无，不能据此换最终版本。
+- 尚无可靠证据达到 33000，也没有把 3–5% 的单次波动当作实质提升。优先继续验证 C5/C6 在受 CPU 限制的困难卡上是否保留更多搜索力度；C3 增加开销且初始增益微小，C4 初始变差，暂不建议直接设最终版本。
+
+### 接手操作
+
+1. 最新工作在 codex/optimization-20261007，六个候选均已固定 commit 上传；main 未改。当前 manifest 是 C6，只开 PROJECT_CACHE/CALIBRATION_CACHE；策略功能默认关闭，CELL_CACHE 默认开启。
+2. 本地长卡仍可在 run_output/20261007/*/summary.json 查看逐卡完成结果，进程不调用模型。完整 agent/runner 日志和不可变 source 都在各自目录。JSON 快照是保存时状态，不自动更新。
+3. 平台只允许读取 `python3 tools/official_cli.py --json project show REV --files` / `eval show BATCH`；**不要执行 eval start、eval selfcheck 或最终确认，除非用户明确重新授权并补足模型额度。** 已上传版本会由平台自动做公开小测试，可能有少量模型调用。
+4. 正式评测结束后应先核对每卡和模型失败/故障约束表现；A1/C1 大幅波动已有用户证据，不能只用一次总分决定策略。
+5. 重跑本地时用新输出目录，并显式传 manifest 的 PRO_* 参数；tools/benchmark.py 不会自动应用 manifest 环境。例：`python3 tools/benchmark.py --kit ../agent-observer-starter-kit/strategy_review_output/v4_rebuild/local-kit/examples/_local --out run_output/20261007/c6-validation --cards L3 L4 --fixed-level 0 --set PRO_PROJECT_CACHE=1 --set PRO_CALIBRATION_CACHE=1`。该命令默认规则模式，不消耗 DeepSeek。

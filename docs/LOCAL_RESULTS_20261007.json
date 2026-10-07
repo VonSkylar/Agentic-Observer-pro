@@ -1,0 +1,1049 @@
+{
+  "captured_at": "2026-10-07T17:37:42.184649+08:00",
+  "formal_evaluation_started": false,
+  "local_model_enabled": false,
+  "runs": {
+    "baseline": {
+      "metadata": {
+        "commit": "05ded5895a45cc23b21d931e1a268a7fea190d7e",
+        "source_hashes": {
+          "planner.py": "3b983b91859ee311c76458004e3bc5783467826d48b72fe38935a792f5099118",
+          "handover.py": "0ce6229bcad82826ee2f8275551bd7b0dee202e7abb7f5197d5b1a5277b6d3b2",
+          "advisor.py": "7bdda2e8f054d691d69110e8eeaf257b889ee035cb8748af154fcfb60b75c6f3",
+          "skymath.py": "584d792155ef3ac02b0fa53c2241f3b72366de034b6ee82e44d8c10389841e26",
+          "llm_client.py": "a4aab61ea2d22b9daa3124df7108d64d11424df99b6c05c0a67fe2159db5f40b",
+          "agent.py": "7a4cefa2822f8420439b17565bc7fe0f74441cbe3b272a030e1444232639111e",
+          "submit_competition.py": "e83f5e0ca14b04feca2e29ea46442bc03253cbaf10cb06ffc9235c5aca59f2ec",
+          "pack_agent.py": "ea6cb651e0742cc965cb4e15f1afe02d2904adbff5eaf101445669bac5c375a4"
+        },
+        "overrides": {
+          "PRO_FIXED_LEVEL": "0"
+        },
+        "model_enabled": false,
+        "engine_manifest_sha256": "95cd5489da5eaa0999aa9c328c6d6f494944bacd48569b15d35f54a9ad25f94b"
+      },
+      "results": [
+        {
+          "card": "L1",
+          "score": 6423.774336,
+          "components": {
+            "observation_request_reward": 200.0,
+            "report_settlement": 100.0,
+            "required_penalty": -100.0,
+            "sum_best_scores": 6224.2396,
+            "uniformity_penalty": -0.465265
+          },
+          "counts": {
+            "decisions": 1372,
+            "invalidated_observations": 0,
+            "observation_requests_completed": 2,
+            "observation_requests_issued": 2,
+            "observations": 9944,
+            "observe_actions": 810,
+            "required_missing": 2,
+            "targets_observed": 7434
+          },
+          "termination": "survey_complete",
+          "clock": {
+            "budget_seconds": 900.0,
+            "charged_seconds": 171.143,
+            "cpu_meter": "cpu",
+            "cpu_seconds": 98.837,
+            "hard_cap_reached": false,
+            "hard_cap_seconds": 1800.0,
+            "mode": "cpu",
+            "run_wall_seconds": 104.58,
+            "schema_version": "fair-clock-v1",
+            "speed_factor": 0.5811,
+            "speed_factor_max": 0.5811,
+            "speed_factor_min": 0.575,
+            "speed_samples": 2,
+            "wait_seconds": 0.355,
+            "window_seconds": 99.193
+          },
+          "elapsed_seconds": 105.5695035,
+          "scenario_sha256": "c8d1a8676e4a283b55bdaa59c40f0ae53396e05a93095e6364573ad536c68c43"
+        },
+        {
+          "card": "L3",
+          "score": 7005.604063,
+          "components": {
+            "observation_request_reward": 200.0,
+            "report_settlement": 100.0,
+            "required_penalty": -50.0,
+            "sum_best_scores": 6755.749923,
+            "uniformity_penalty": -0.14586
+          },
+          "counts": {
+            "decisions": 1533,
+            "invalidated_observations": 14,
+            "observation_requests_completed": 2,
+            "observation_requests_issued": 2,
+            "observations": 10549,
+            "observe_actions": 849,
+            "required_missing": 1,
+            "targets_observed": 8039
+          },
+          "termination": "survey_complete",
+          "clock": {
+            "budget_seconds": 900.0,
+            "charged_seconds": 404.566,
+            "cpu_meter": "cpu",
+            "cpu_seconds": 277.228,
+            "hard_cap_reached": false,
+            "hard_cap_seconds": 1800.0,
+            "mode": "cpu",
+            "run_wall_seconds": 289.857,
+            "schema_version": "fair-clock-v1",
+            "speed_factor": 0.8757,
+            "speed_factor_max": 0.8757,
+            "speed_factor_min": 0.6052,
+            "speed_samples": 5,
+            "wait_seconds": 1.528,
+            "window_seconds": 278.756
+          },
+          "elapsed_seconds": 290.894122916,
+          "scenario_sha256": "8f6ed8404147282a48bd3b7bf8d2df5bbbbff147f7e3e06f37065a75a2414a32"
+        },
+        {
+          "card": "L2",
+          "score": 6505.529198,
+          "components": {
+            "observation_request_reward": 200.0,
+            "report_settlement": 100.0,
+            "required_penalty": -150.0,
+            "sum_best_scores": 6359.808762,
+            "uniformity_penalty": -4.279564
+          },
+          "counts": {
+            "decisions": 1397,
+            "invalidated_observations": 0,
+            "observation_requests_completed": 2,
+            "observation_requests_issued": 2,
+            "observations": 9739,
+            "observe_actions": 755,
+            "required_missing": 3,
+            "targets_observed": 7552
+          },
+          "termination": "survey_complete",
+          "clock": {
+            "budget_seconds": 900.0,
+            "charged_seconds": 183.179,
+            "cpu_meter": "cpu",
+            "cpu_seconds": 244.205,
+            "hard_cap_reached": false,
+            "hard_cap_seconds": 1800.0,
+            "mode": "cpu",
+            "run_wall_seconds": 261.517,
+            "schema_version": "fair-clock-v1",
+            "speed_factor": 1.4139,
+            "speed_factor_max": 1.4139,
+            "speed_factor_min": 1.2929,
+            "speed_samples": 5,
+            "wait_seconds": 1.422,
+            "window_seconds": 245.627
+          },
+          "elapsed_seconds": 263.745618209,
+          "scenario_sha256": "b9027d4acd26252ace34d129b9dff10d6c68a1e0ba2912c3b2a7e4510e70bedd"
+        },
+        {
+          "card": "L4",
+          "score": 6975.421709,
+          "components": {
+            "observation_request_reward": 200.0,
+            "report_settlement": 100.0,
+            "required_penalty": -50.0,
+            "sum_best_scores": 6726.561593,
+            "uniformity_penalty": -1.139883
+          },
+          "counts": {
+            "decisions": 1563,
+            "invalidated_observations": 270,
+            "observation_requests_completed": 2,
+            "observation_requests_issued": 2,
+            "observations": 11266,
+            "observe_actions": 867,
+            "required_missing": 1,
+            "targets_observed": 7953
+          },
+          "termination": "survey_complete",
+          "clock": {
+            "budget_seconds": 900.0,
+            "charged_seconds": 352.257,
+            "cpu_meter": "cpu",
+            "cpu_seconds": 562.208,
+            "hard_cap_reached": false,
+            "hard_cap_seconds": 1800.0,
+            "mode": "cpu",
+            "run_wall_seconds": 597.296,
+            "schema_version": "fair-clock-v1",
+            "speed_factor": 1.6516,
+            "speed_factor_max": 1.6713,
+            "speed_factor_min": 1.5358,
+            "speed_samples": 10,
+            "wait_seconds": 7.525,
+            "window_seconds": 569.734
+          },
+          "elapsed_seconds": 599.9953608330001,
+          "scenario_sha256": "39c7355081024308ca027ea79f0708f77ad0ac272158aa3cc3c6f337ade07c4a"
+        }
+      ],
+      "pending_cards": []
+    },
+    "cell-cache": {
+      "metadata": {
+        "commit": "05ded5895a45cc23b21d931e1a268a7fea190d7e",
+        "source_hashes": {
+          "planner.py": "1d31219cfbbca8bec8fe31ec43c9125bdeaf8b36fbeba62f3b256d8dd2a83ea0",
+          "handover.py": "0ce6229bcad82826ee2f8275551bd7b0dee202e7abb7f5197d5b1a5277b6d3b2",
+          "advisor.py": "7bdda2e8f054d691d69110e8eeaf257b889ee035cb8748af154fcfb60b75c6f3",
+          "skymath.py": "584d792155ef3ac02b0fa53c2241f3b72366de034b6ee82e44d8c10389841e26",
+          "llm_client.py": "a4aab61ea2d22b9daa3124df7108d64d11424df99b6c05c0a67fe2159db5f40b",
+          "agent.py": "7a4cefa2822f8420439b17565bc7fe0f74441cbe3b272a030e1444232639111e",
+          "submit_competition.py": "e83f5e0ca14b04feca2e29ea46442bc03253cbaf10cb06ffc9235c5aca59f2ec",
+          "pack_agent.py": "ea6cb651e0742cc965cb4e15f1afe02d2904adbff5eaf101445669bac5c375a4"
+        },
+        "overrides": {
+          "PRO_FIXED_LEVEL": "0"
+        },
+        "model_enabled": false,
+        "engine_manifest_sha256": "95cd5489da5eaa0999aa9c328c6d6f494944bacd48569b15d35f54a9ad25f94b"
+      },
+      "results": [
+        {
+          "card": "L1",
+          "score": 6423.774336,
+          "components": {
+            "observation_request_reward": 200.0,
+            "report_settlement": 100.0,
+            "required_penalty": -100.0,
+            "sum_best_scores": 6224.2396,
+            "uniformity_penalty": -0.465265
+          },
+          "counts": {
+            "decisions": 1372,
+            "invalidated_observations": 0,
+            "observation_requests_completed": 2,
+            "observation_requests_issued": 2,
+            "observations": 9944,
+            "observe_actions": 810,
+            "required_missing": 2,
+            "targets_observed": 7434
+          },
+          "termination": "survey_complete",
+          "clock": {
+            "budget_seconds": 900.0,
+            "charged_seconds": 161.268,
+            "cpu_meter": "cpu",
+            "cpu_seconds": 100.568,
+            "hard_cap_reached": false,
+            "hard_cap_seconds": 1800.0,
+            "mode": "cpu",
+            "run_wall_seconds": 106.917,
+            "schema_version": "fair-clock-v1",
+            "speed_factor": 0.6457,
+            "speed_factor_max": 0.6457,
+            "speed_factor_min": 0.6083,
+            "speed_samples": 2,
+            "wait_seconds": 0.448,
+            "window_seconds": 101.016
+          },
+          "elapsed_seconds": 107.934785542,
+          "scenario_sha256": "c8d1a8676e4a283b55bdaa59c40f0ae53396e05a93095e6364573ad536c68c43"
+        },
+        {
+          "card": "L3",
+          "score": 7005.604063,
+          "components": {
+            "observation_request_reward": 200.0,
+            "report_settlement": 100.0,
+            "required_penalty": -50.0,
+            "sum_best_scores": 6755.749923,
+            "uniformity_penalty": -0.14586
+          },
+          "counts": {
+            "decisions": 1533,
+            "invalidated_observations": 14,
+            "observation_requests_completed": 2,
+            "observation_requests_issued": 2,
+            "observations": 10549,
+            "observe_actions": 849,
+            "required_missing": 1,
+            "targets_observed": 8039
+          },
+          "termination": "survey_complete",
+          "clock": {
+            "budget_seconds": 900.0,
+            "charged_seconds": 397.67,
+            "cpu_meter": "cpu",
+            "cpu_seconds": 390.184,
+            "hard_cap_reached": false,
+            "hard_cap_seconds": 1800.0,
+            "mode": "cpu",
+            "run_wall_seconds": 409.562,
+            "schema_version": "fair-clock-v1",
+            "speed_factor": 1.3367,
+            "speed_factor_max": 1.3367,
+            "speed_factor_min": 0.673,
+            "speed_samples": 7,
+            "wait_seconds": 2.194,
+            "window_seconds": 392.377
+          },
+          "elapsed_seconds": 410.732759667,
+          "scenario_sha256": "8f6ed8404147282a48bd3b7bf8d2df5bbbbff147f7e3e06f37065a75a2414a32"
+        },
+        {
+          "card": "L2",
+          "score": 6505.529198,
+          "components": {
+            "observation_request_reward": 200.0,
+            "report_settlement": 100.0,
+            "required_penalty": -150.0,
+            "sum_best_scores": 6359.808762,
+            "uniformity_penalty": -4.279564
+          },
+          "counts": {
+            "decisions": 1397,
+            "invalidated_observations": 0,
+            "observation_requests_completed": 2,
+            "observation_requests_issued": 2,
+            "observations": 9739,
+            "observe_actions": 755,
+            "required_missing": 3,
+            "targets_observed": 7552
+          },
+          "termination": "survey_complete",
+          "clock": {
+            "budget_seconds": 900.0,
+            "charged_seconds": 163.913,
+            "cpu_meter": "cpu",
+            "cpu_seconds": 252.344,
+            "hard_cap_reached": false,
+            "hard_cap_seconds": 1800.0,
+            "mode": "cpu",
+            "run_wall_seconds": 272.363,
+            "schema_version": "fair-clock-v1",
+            "speed_factor": 1.5438,
+            "speed_factor_max": 1.5438,
+            "speed_factor_min": 1.5375,
+            "speed_samples": 5,
+            "wait_seconds": 2.552,
+            "window_seconds": 254.896
+          },
+          "elapsed_seconds": 274.982745208,
+          "scenario_sha256": "b9027d4acd26252ace34d129b9dff10d6c68a1e0ba2912c3b2a7e4510e70bedd"
+        },
+        {
+          "card": "L4",
+          "score": 6975.421709,
+          "components": {
+            "observation_request_reward": 200.0,
+            "report_settlement": 100.0,
+            "required_penalty": -50.0,
+            "sum_best_scores": 6726.561593,
+            "uniformity_penalty": -1.139883
+          },
+          "counts": {
+            "decisions": 1563,
+            "invalidated_observations": 270,
+            "observation_requests_completed": 2,
+            "observation_requests_issued": 2,
+            "observations": 11266,
+            "observe_actions": 867,
+            "required_missing": 1,
+            "targets_observed": 7953
+          },
+          "termination": "survey_complete",
+          "clock": {
+            "budget_seconds": 900.0,
+            "charged_seconds": 333.912,
+            "cpu_meter": "cpu",
+            "cpu_seconds": 542.936,
+            "hard_cap_reached": false,
+            "hard_cap_seconds": 1800.0,
+            "mode": "cpu",
+            "run_wall_seconds": 576.795,
+            "schema_version": "fair-clock-v1",
+            "speed_factor": 1.5456,
+            "speed_factor_max": 1.7314,
+            "speed_factor_min": 1.5456,
+            "speed_samples": 10,
+            "wait_seconds": 6.958,
+            "window_seconds": 549.893
+          },
+          "elapsed_seconds": 579.464601167,
+          "scenario_sha256": "39c7355081024308ca027ea79f0708f77ad0ac272158aa3cc3c6f337ade07c4a"
+        }
+      ],
+      "pending_cards": []
+    },
+    "diverse-fast": {
+      "metadata": {
+        "commit": "a8c1ce79c66b8ee1a693ed6e014508086de1d380",
+        "source_hashes": {
+          "planner.py": "267da6b3f12b03bdf3dd850bbf18b9ba89c2c7642d68c2a035d6f6375f3438ca",
+          "handover.py": "0ce6229bcad82826ee2f8275551bd7b0dee202e7abb7f5197d5b1a5277b6d3b2",
+          "advisor.py": "7bdda2e8f054d691d69110e8eeaf257b889ee035cb8748af154fcfb60b75c6f3",
+          "skymath.py": "584d792155ef3ac02b0fa53c2241f3b72366de034b6ee82e44d8c10389841e26",
+          "llm_client.py": "a4aab61ea2d22b9daa3124df7108d64d11424df99b6c05c0a67fe2159db5f40b",
+          "agent.py": "7a4cefa2822f8420439b17565bc7fe0f74441cbe3b272a030e1444232639111e",
+          "submit_competition.py": "e83f5e0ca14b04feca2e29ea46442bc03253cbaf10cb06ffc9235c5aca59f2ec",
+          "pack_agent.py": "96c597453d1ec9270d19309ac0cf858afe6b84bb63ff0336934a1bf5d2dc5132"
+        },
+        "overrides": {
+          "PRO_FAST_DENSE": "4",
+          "PRO_DYNAMIC_GEOMETRY": "1"
+        },
+        "model_enabled": false,
+        "engine_manifest_sha256": "95cd5489da5eaa0999aa9c328c6d6f494944bacd48569b15d35f54a9ad25f94b"
+      },
+      "results": [
+        {
+          "card": "L1",
+          "score": 6316.652241,
+          "components": {
+            "observation_request_reward": 200.0,
+            "report_settlement": 100.0,
+            "required_penalty": -100.0,
+            "sum_best_scores": 6117.221047,
+            "uniformity_penalty": -0.568806
+          },
+          "counts": {
+            "decisions": 1355,
+            "invalidated_observations": 0,
+            "observation_requests_completed": 2,
+            "observation_requests_issued": 2,
+            "observations": 9660,
+            "observe_actions": 791,
+            "required_missing": 2,
+            "targets_observed": 7335
+          },
+          "termination": "survey_complete",
+          "clock": {
+            "budget_seconds": 900.0,
+            "charged_seconds": 235.977,
+            "cpu_meter": "cpu",
+            "cpu_seconds": 220.067,
+            "hard_cap_reached": false,
+            "hard_cap_seconds": 1800.0,
+            "mode": "cpu",
+            "run_wall_seconds": 233.286,
+            "schema_version": "fair-clock-v1",
+            "speed_factor": 1.0104,
+            "speed_factor_max": 1.0104,
+            "speed_factor_min": 0.8644,
+            "speed_samples": 4,
+            "wait_seconds": 1.462,
+            "window_seconds": 221.529
+          },
+          "elapsed_seconds": 234.76487475,
+          "scenario_sha256": "c8d1a8676e4a283b55bdaa59c40f0ae53396e05a93095e6364573ad536c68c43"
+        },
+        {
+          "card": "L3",
+          "score": 6970.678419,
+          "components": {
+            "observation_request_reward": 200.0,
+            "report_settlement": 100.0,
+            "required_penalty": -50.0,
+            "sum_best_scores": 6720.945223,
+            "uniformity_penalty": -0.266805
+          },
+          "counts": {
+            "decisions": 1567,
+            "invalidated_observations": 16,
+            "observation_requests_completed": 2,
+            "observation_requests_issued": 2,
+            "observations": 10999,
+            "observe_actions": 884,
+            "required_missing": 1,
+            "targets_observed": 8002
+          },
+          "termination": "survey_complete",
+          "clock": {
+            "budget_seconds": 900.0,
+            "charged_seconds": 367.195,
+            "cpu_meter": "cpu",
+            "cpu_seconds": 528.256,
+            "hard_cap_reached": false,
+            "hard_cap_seconds": 1800.0,
+            "mode": "cpu",
+            "run_wall_seconds": 560.019,
+            "schema_version": "fair-clock-v1",
+            "speed_factor": 1.6011,
+            "speed_factor_max": 1.6011,
+            "speed_factor_min": 1.3329,
+            "speed_samples": 10,
+            "wait_seconds": 5.957,
+            "window_seconds": 534.213
+          },
+          "elapsed_seconds": 562.336469625,
+          "scenario_sha256": "8f6ed8404147282a48bd3b7bf8d2df5bbbbff147f7e3e06f37065a75a2414a32"
+        }
+      ],
+      "pending_cards": []
+    },
+    "joint": {
+      "metadata": {
+        "commit": "bf1483a81b63636c1ee8522b5cc8fdb8325fad18",
+        "source_hashes": {
+          "planner.py": "371e0d118ecf12867a05ab026124a25896005e7845870db5b63c5f78b2402c93",
+          "handover.py": "0ce6229bcad82826ee2f8275551bd7b0dee202e7abb7f5197d5b1a5277b6d3b2",
+          "advisor.py": "7bdda2e8f054d691d69110e8eeaf257b889ee035cb8748af154fcfb60b75c6f3",
+          "skymath.py": "584d792155ef3ac02b0fa53c2241f3b72366de034b6ee82e44d8c10389841e26",
+          "llm_client.py": "a4aab61ea2d22b9daa3124df7108d64d11424df99b6c05c0a67fe2159db5f40b",
+          "agent.py": "7a4cefa2822f8420439b17565bc7fe0f74441cbe3b272a030e1444232639111e",
+          "submit_competition.py": "e83f5e0ca14b04feca2e29ea46442bc03253cbaf10cb06ffc9235c5aca59f2ec",
+          "pack_agent.py": "96c597453d1ec9270d19309ac0cf858afe6b84bb63ff0336934a1bf5d2dc5132"
+        },
+        "overrides": {
+          "PRO_JOINT_PROGRAM": "1",
+          "PRO_FIXED_LEVEL": "0"
+        },
+        "model_enabled": false,
+        "engine_manifest_sha256": "95cd5489da5eaa0999aa9c328c6d6f494944bacd48569b15d35f54a9ad25f94b"
+      },
+      "results": [
+        {
+          "card": "L1",
+          "score": 6432.521099,
+          "components": {
+            "observation_request_reward": 200.0,
+            "report_settlement": 100.0,
+            "required_penalty": -100.0,
+            "sum_best_scores": 6233.093612,
+            "uniformity_penalty": -0.572513
+          },
+          "counts": {
+            "decisions": 1389,
+            "invalidated_observations": 0,
+            "observation_requests_completed": 2,
+            "observation_requests_issued": 2,
+            "observations": 10046,
+            "observe_actions": 828,
+            "required_missing": 2,
+            "targets_observed": 7465
+          },
+          "termination": "survey_complete",
+          "clock": {
+            "budget_seconds": 900.0,
+            "charged_seconds": 269.545,
+            "cpu_meter": "cpu",
+            "cpu_seconds": 374.537,
+            "hard_cap_reached": false,
+            "hard_cap_seconds": 1800.0,
+            "mode": "cpu",
+            "run_wall_seconds": 395.975,
+            "schema_version": "fair-clock-v1",
+            "speed_factor": 1.5045,
+            "speed_factor_max": 1.5045,
+            "speed_factor_min": 1.3511,
+            "speed_samples": 7,
+            "wait_seconds": 2.244,
+            "window_seconds": 376.78
+          },
+          "elapsed_seconds": 398.28298475,
+          "scenario_sha256": "c8d1a8676e4a283b55bdaa59c40f0ae53396e05a93095e6364573ad536c68c43"
+        },
+        {
+          "card": "L3",
+          "score": 6921.139996,
+          "components": {
+            "observation_request_reward": 200.0,
+            "report_settlement": 100.0,
+            "required_penalty": -100.0,
+            "sum_best_scores": 6721.447924,
+            "uniformity_penalty": -0.307928
+          },
+          "counts": {
+            "decisions": 1530,
+            "invalidated_observations": 14,
+            "observation_requests_completed": 2,
+            "observation_requests_issued": 2,
+            "observations": 10504,
+            "observe_actions": 845,
+            "required_missing": 2,
+            "targets_observed": 7974
+          },
+          "termination": "survey_complete",
+          "clock": {
+            "budget_seconds": 900.0,
+            "charged_seconds": 417.021,
+            "cpu_meter": "cpu",
+            "cpu_seconds": 677.343,
+            "hard_cap_reached": false,
+            "hard_cap_seconds": 1800.0,
+            "mode": "cpu",
+            "run_wall_seconds": 713.683,
+            "schema_version": "fair-clock-v1",
+            "speed_factor": 1.5368,
+            "speed_factor_max": 1.6689,
+            "speed_factor_min": 1.5368,
+            "speed_samples": 12,
+            "wait_seconds": 8.379,
+            "window_seconds": 685.721
+          },
+          "elapsed_seconds": 716.5069982919999,
+          "scenario_sha256": "8f6ed8404147282a48bd3b7bf8d2df5bbbbff147f7e3e06f37065a75a2414a32"
+        }
+      ],
+      "pending_cards": []
+    },
+    "adaptive-duration": {
+      "metadata": {
+        "commit": "cf6adc3485bb339d0812fccea655e02690cf2a3f",
+        "source_hashes": {
+          "planner.py": "e70e56e8bd903c4e8a94675847da38edc7bd000c167b006acc8bce80b563c72b",
+          "handover.py": "0ce6229bcad82826ee2f8275551bd7b0dee202e7abb7f5197d5b1a5277b6d3b2",
+          "advisor.py": "7bdda2e8f054d691d69110e8eeaf257b889ee035cb8748af154fcfb60b75c6f3",
+          "skymath.py": "584d792155ef3ac02b0fa53c2241f3b72366de034b6ee82e44d8c10389841e26",
+          "llm_client.py": "a4aab61ea2d22b9daa3124df7108d64d11424df99b6c05c0a67fe2159db5f40b",
+          "agent.py": "7a4cefa2822f8420439b17565bc7fe0f74441cbe3b272a030e1444232639111e",
+          "submit_competition.py": "e83f5e0ca14b04feca2e29ea46442bc03253cbaf10cb06ffc9235c5aca59f2ec",
+          "pack_agent.py": "96c597453d1ec9270d19309ac0cf858afe6b84bb63ff0336934a1bf5d2dc5132"
+        },
+        "overrides": {
+          "PRO_ADAPTIVE_DURATIONS": "4",
+          "PRO_FIXED_LEVEL": "0"
+        },
+        "model_enabled": false,
+        "engine_manifest_sha256": "95cd5489da5eaa0999aa9c328c6d6f494944bacd48569b15d35f54a9ad25f94b"
+      },
+      "results": [
+        {
+          "card": "L1",
+          "score": 6131.190281,
+          "components": {
+            "observation_request_reward": 200.0,
+            "report_settlement": 100.0,
+            "required_penalty": -100.0,
+            "sum_best_scores": 5931.664226,
+            "uniformity_penalty": -0.473945
+          },
+          "counts": {
+            "decisions": 1337,
+            "invalidated_observations": 0,
+            "observation_requests_completed": 2,
+            "observation_requests_issued": 2,
+            "observations": 9508,
+            "observe_actions": 774,
+            "required_missing": 2,
+            "targets_observed": 7323
+          },
+          "termination": "survey_complete",
+          "clock": {
+            "budget_seconds": 900.0,
+            "charged_seconds": 174.557,
+            "cpu_meter": "cpu",
+            "cpu_seconds": 268.987,
+            "hard_cap_reached": false,
+            "hard_cap_seconds": 1800.0,
+            "mode": "cpu",
+            "run_wall_seconds": 288.733,
+            "schema_version": "fair-clock-v1",
+            "speed_factor": 1.5497,
+            "speed_factor_max": 1.5497,
+            "speed_factor_min": 1.5293,
+            "speed_samples": 5,
+            "wait_seconds": 2.704,
+            "window_seconds": 271.691
+          },
+          "elapsed_seconds": 291.361440875,
+          "scenario_sha256": "c8d1a8676e4a283b55bdaa59c40f0ae53396e05a93095e6364573ad536c68c43"
+        },
+        {
+          "card": "L3",
+          "score": 7038.894268,
+          "components": {
+            "observation_request_reward": 200.0,
+            "report_settlement": 100.0,
+            "required_penalty": -50.0,
+            "sum_best_scores": 6789.294107,
+            "uniformity_penalty": -0.399838
+          },
+          "counts": {
+            "decisions": 1557,
+            "invalidated_observations": 0,
+            "observation_requests_completed": 2,
+            "observation_requests_issued": 2,
+            "observations": 10987,
+            "observe_actions": 874,
+            "required_missing": 1,
+            "targets_observed": 8050
+          },
+          "termination": "survey_complete",
+          "clock": {
+            "budget_seconds": 900.0,
+            "charged_seconds": 352.886,
+            "cpu_meter": "cpu",
+            "cpu_seconds": 562.415,
+            "hard_cap_reached": false,
+            "hard_cap_seconds": 1800.0,
+            "mode": "cpu",
+            "run_wall_seconds": 595.627,
+            "schema_version": "fair-clock-v1",
+            "speed_factor": 1.5411,
+            "speed_factor_max": 1.6604,
+            "speed_factor_min": 1.5411,
+            "speed_samples": 10,
+            "wait_seconds": 6.957,
+            "window_seconds": 569.372
+          },
+          "elapsed_seconds": 598.6152494170001,
+          "scenario_sha256": "8f6ed8404147282a48bd3b7bf8d2df5bbbbff147f7e3e06f37065a75a2414a32"
+        }
+      ],
+      "pending_cards": []
+    },
+    "projection": {
+      "metadata": {
+        "commit": "90610ddaf0f559e16577bb2b9d9fb3c24213a4ca",
+        "source_hashes": {
+          "planner.py": "2284f78315a07fdba168d9b088813847269b1107d16826155d8c80d82557b38c",
+          "handover.py": "0ce6229bcad82826ee2f8275551bd7b0dee202e7abb7f5197d5b1a5277b6d3b2",
+          "advisor.py": "7bdda2e8f054d691d69110e8eeaf257b889ee035cb8748af154fcfb60b75c6f3",
+          "skymath.py": "ac49f271ab326486b70fe04919354d7173de9c4944caa756c7283b4e2706e397",
+          "llm_client.py": "a4aab61ea2d22b9daa3124df7108d64d11424df99b6c05c0a67fe2159db5f40b",
+          "agent.py": "7a4cefa2822f8420439b17565bc7fe0f74441cbe3b272a030e1444232639111e",
+          "submit_competition.py": "e83f5e0ca14b04feca2e29ea46442bc03253cbaf10cb06ffc9235c5aca59f2ec",
+          "pack_agent.py": "96c597453d1ec9270d19309ac0cf858afe6b84bb63ff0336934a1bf5d2dc5132"
+        },
+        "overrides": {
+          "PRO_PROJECT_CACHE": "1",
+          "PRO_FIXED_LEVEL": "0"
+        },
+        "model_enabled": false,
+        "engine_manifest_sha256": "95cd5489da5eaa0999aa9c328c6d6f494944bacd48569b15d35f54a9ad25f94b"
+      },
+      "results": [
+        {
+          "card": "L1",
+          "score": 6423.774336,
+          "components": {
+            "observation_request_reward": 200.0,
+            "report_settlement": 100.0,
+            "required_penalty": -100.0,
+            "sum_best_scores": 6224.2396,
+            "uniformity_penalty": -0.465265
+          },
+          "counts": {
+            "decisions": 1372,
+            "invalidated_observations": 0,
+            "observation_requests_completed": 2,
+            "observation_requests_issued": 2,
+            "observations": 9944,
+            "observe_actions": 810,
+            "required_missing": 2,
+            "targets_observed": 7434
+          },
+          "termination": "survey_complete",
+          "clock": {
+            "budget_seconds": 900.0,
+            "charged_seconds": 118.305,
+            "cpu_meter": "cpu",
+            "cpu_seconds": 192.521,
+            "hard_cap_reached": false,
+            "hard_cap_seconds": 1800.0,
+            "mode": "cpu",
+            "run_wall_seconds": 213.947,
+            "schema_version": "fair-clock-v1",
+            "speed_factor": 1.6405,
+            "speed_factor_max": 1.6702,
+            "speed_factor_min": 1.572,
+            "speed_samples": 4,
+            "wait_seconds": 3.488,
+            "window_seconds": 196.008
+          },
+          "elapsed_seconds": 216.648937875,
+          "scenario_sha256": "c8d1a8676e4a283b55bdaa59c40f0ae53396e05a93095e6364573ad536c68c43"
+        },
+        {
+          "card": "L3",
+          "score": 7005.604063,
+          "components": {
+            "observation_request_reward": 200.0,
+            "report_settlement": 100.0,
+            "required_penalty": -50.0,
+            "sum_best_scores": 6755.749923,
+            "uniformity_penalty": -0.14586
+          },
+          "counts": {
+            "decisions": 1533,
+            "invalidated_observations": 14,
+            "observation_requests_completed": 2,
+            "observation_requests_issued": 2,
+            "observations": 10549,
+            "observe_actions": 849,
+            "required_missing": 1,
+            "targets_observed": 8039
+          },
+          "termination": "survey_complete",
+          "clock": {
+            "budget_seconds": 900.0,
+            "charged_seconds": 247.956,
+            "cpu_meter": "cpu",
+            "cpu_seconds": 406.685,
+            "hard_cap_reached": false,
+            "hard_cap_seconds": 1800.0,
+            "mode": "cpu",
+            "run_wall_seconds": 431.387,
+            "schema_version": "fair-clock-v1",
+            "speed_factor": 1.5804,
+            "speed_factor_max": 1.6741,
+            "speed_factor_min": 1.5804,
+            "speed_samples": 8,
+            "wait_seconds": 3.895,
+            "window_seconds": 410.58
+          },
+          "elapsed_seconds": 434.25047500000005,
+          "scenario_sha256": "8f6ed8404147282a48bd3b7bf8d2df5bbbbff147f7e3e06f37065a75a2414a32"
+        }
+      ],
+      "pending_cards": [
+        "L2",
+        "L4"
+      ]
+    }
+  },
+  "candidates": [
+    {
+      "candidate": "C1",
+      "revision_id": "3ef97e1b-2828-4a86-a523-d43e768468be",
+      "status": "reviewable",
+      "public_test": {
+        "score": -111.518261,
+        "passed": true,
+        "run_id": "3ff97c12-3909-4bb9-af57-9861f2904cbb",
+        "status": "passed"
+      },
+      "evaluations": 0,
+      "manifest": {
+        "run": [
+          "python3",
+          "-u",
+          "agent.py"
+        ],
+        "build": [],
+        "image": "python@sha256:05cda9777409a9c3ffddd94a4c476b79f0769a0b4857f0c7ed9226b6800b0d6f",
+        "protocol": "jsonl-v2",
+        "environment": {
+          "PYTHONDONTWRITEBYTECODE": "1"
+        },
+        "schema_version": "observer-project-v1",
+        "working_directory": "."
+      },
+      "adapter_files": {}
+    },
+    {
+      "candidate": "C2",
+      "revision_id": "c2085ec9-8983-4b8a-8748-597dfec1e81a",
+      "status": "reviewable",
+      "public_test": {
+        "score": -100.452427,
+        "passed": true,
+        "run_id": "839028a8-4ee7-4bc9-a3c9-091a5785f959",
+        "status": "passed"
+      },
+      "evaluations": 0,
+      "manifest": {
+        "run": [
+          "python3",
+          "-u",
+          "agent.py"
+        ],
+        "build": [],
+        "image": "python@sha256:05cda9777409a9c3ffddd94a4c476b79f0769a0b4857f0c7ed9226b6800b0d6f",
+        "protocol": "jsonl-v2",
+        "environment": {
+          "PRO_FAST_DENSE": "4",
+          "PRO_DYNAMIC_GEOMETRY": "1",
+          "PYTHONDONTWRITEBYTECODE": "1"
+        },
+        "schema_version": "observer-project-v1",
+        "working_directory": "."
+      },
+      "adapter_files": {}
+    },
+    {
+      "candidate": "C3",
+      "revision_id": "126c59bf-76b2-4830-a75d-b49efb89e4e1",
+      "status": "reviewable",
+      "public_test": {
+        "score": -112.582943,
+        "passed": true,
+        "run_id": "23c18777-c293-4946-9121-18f0f31dcdd1",
+        "status": "passed"
+      },
+      "evaluations": 0,
+      "manifest": {
+        "run": [
+          "python3",
+          "-u",
+          "agent.py"
+        ],
+        "build": [],
+        "image": "python@sha256:05cda9777409a9c3ffddd94a4c476b79f0769a0b4857f0c7ed9226b6800b0d6f",
+        "protocol": "jsonl-v2",
+        "environment": {
+          "PRO_JOINT_PROGRAM": "1",
+          "PYTHONDONTWRITEBYTECODE": "1"
+        },
+        "schema_version": "observer-project-v1",
+        "working_directory": "."
+      },
+      "adapter_files": {}
+    },
+    {
+      "candidate": "C4",
+      "revision_id": "d27d438d-413c-4e67-887f-344693330193",
+      "status": "reviewable",
+      "public_test": {
+        "score": -120.589462,
+        "passed": true,
+        "run_id": "a40c739f-48d4-46a7-a88c-58c65ac307b8",
+        "status": "passed"
+      },
+      "evaluations": 0,
+      "manifest": {
+        "run": [
+          "python3",
+          "-u",
+          "agent.py"
+        ],
+        "build": [],
+        "image": "python@sha256:05cda9777409a9c3ffddd94a4c476b79f0769a0b4857f0c7ed9226b6800b0d6f",
+        "protocol": "jsonl-v2",
+        "environment": {
+          "PRO_ADAPTIVE_DURATIONS": "4",
+          "PYTHONDONTWRITEBYTECODE": "1"
+        },
+        "schema_version": "observer-project-v1",
+        "working_directory": "."
+      },
+      "adapter_files": {}
+    },
+    {
+      "candidate": "C5",
+      "revision_id": "f97f27a1-5ea1-460c-a7ff-6b224b833ff9",
+      "status": "preparing",
+      "public_test": {
+        "passed": false,
+        "status": "queued"
+      },
+      "evaluations": 0,
+      "manifest": {
+        "run": [
+          "python3",
+          "-u",
+          "agent.py"
+        ],
+        "build": [],
+        "image": "python@sha256:05cda9777409a9c3ffddd94a4c476b79f0769a0b4857f0c7ed9226b6800b0d6f",
+        "protocol": "jsonl-v2",
+        "environment": {
+          "PRO_PROJECT_CACHE": "1",
+          "PYTHONDONTWRITEBYTECODE": "1"
+        },
+        "schema_version": "observer-project-v1",
+        "working_directory": "."
+      },
+      "adapter_files": {}
+    },
+    {
+      "candidate": "C6",
+      "revision_id": "167e80d4-7980-41ba-b8bc-fcfba74c21c9",
+      "status": "preparing",
+      "public_test": {},
+      "evaluations": 0,
+      "manifest": null,
+      "adapter_files": {}
+    }
+  ],
+  "existing_evaluation": {
+    "batch_id": "891138fa-d7eb-44ff-a5a0-a804a59ed32d",
+    "status": "running",
+    "score": null,
+    "phase_id": "049d6029-343d-4d16-80d5-94b56b350301",
+    "phase": "online",
+    "revision_id": "43881c73-4e2a-4495-876e-83550cda7cec",
+    "created_at": "2026-10-07T09:09:18.285806+00:00",
+    "quota_refunded": false,
+    "repeat_group": null,
+    "repeat_runs": null,
+    "model_disabled": false,
+    "runs": [
+      {
+        "run_id": "f5ac2fb3-5bb2-4868-bf37-a2463cd6ee7a",
+        "scenario_id": "30d456db-7677-4bb6-8c83-3db513614c93",
+        "card": "v4-a",
+        "label": "Card A",
+        "status": "scored",
+        "score": 22009.843154,
+        "has_result": true
+      },
+      {
+        "run_id": "10b11cbc-cb4a-4664-a8b1-7876914d45d7",
+        "scenario_id": "297bf82f-54f3-49d6-bc27-04dcc65a8c79",
+        "card": "v4-b",
+        "label": "Card B",
+        "status": "running",
+        "score": null,
+        "has_result": false
+      },
+      {
+        "run_id": "4a22f244-1eb7-4764-b15a-9ab48d9ac914",
+        "scenario_id": "6fb9c640-de50-409c-8eef-b1ac40542d27",
+        "card": "v4-c",
+        "label": "Card C",
+        "status": "scored",
+        "score": 25786.029438,
+        "has_result": true
+      },
+      {
+        "run_id": "bed19a04-355d-43bc-937c-2e4bd2aac184",
+        "scenario_id": "5dd4610e-cfa3-42f3-a0a0-e7be0f65e489",
+        "card": "v4-d",
+        "label": "Card D",
+        "status": "scored",
+        "score": 31642.283799,
+        "has_result": true
+      },
+      {
+        "run_id": "deb840f2-8d50-41b3-adb9-bb57cee88c95",
+        "scenario_id": "fdba57e1-8b8a-4050-ab3c-ef66ba765188",
+        "card": "v4-a1-v5",
+        "label": "Card A1",
+        "status": "queued",
+        "score": null,
+        "has_result": false
+      },
+      {
+        "run_id": "f40db4bc-62ad-4b50-90a4-e028937e1d58",
+        "scenario_id": "4372426d-ee8f-493d-9624-7c7252755693",
+        "card": "v4-b1-v5",
+        "label": "Card B1",
+        "status": "queued",
+        "score": null,
+        "has_result": false
+      },
+      {
+        "run_id": "5cf5f169-2f8c-4252-a10d-47a8ceb6b5a8",
+        "scenario_id": "40503eba-7c7a-42d5-9a97-1e4ccd84a1c0",
+        "card": "v4-c1-v5",
+        "label": "Card C1",
+        "status": "queued",
+        "score": null,
+        "has_result": false
+      },
+      {
+        "run_id": "8dd7d848-4ca9-4b6b-aa25-3e25433c11a6",
+        "scenario_id": "2ec2be31-adc5-4175-87ac-5a85d17894f7",
+        "card": "v4-d1-v5",
+        "label": "Card D1",
+        "status": "queued",
+        "score": null,
+        "has_result": false
+      }
+    ]
+  }
+}
