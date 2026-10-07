@@ -26,6 +26,7 @@ import heapq
 import math
 import os
 from collections import deque
+from functools import lru_cache
 from datetime import datetime, timedelta
 
 from skymath import (
@@ -61,6 +62,7 @@ REFINE = _env("REFINE", 0.1)                 # local pointing search step (deg);
 REFINE_ROUNDS = _env("REFINE_ROUNDS", 4)
 REFINE_FIXED_T = _env("REFINE_FIXED_T", 1)
 REFINE_STEPS = tuple((dn * REFINE, de * REFINE) for dn in (-1, 0, 1) for de in (-1, 0, 1) if dn or de) if REFINE > 0 else ()
+CELL_CACHE = _env("CELL_CACHE", 1)             # exact, decision-local fibre allocation memoization
 POOL = _env("POOL", 600)                      # candidates kept after the cheap proxy ranking
 NEIGHBOUR_RADIUS_DEG = _env("NEIGHBOUR_RADIUS_DEG", 2.5)
 EDGE_MARGIN_DEG = _env("EDGE_MARGIN_DEG", 0.02)   # keep targets this far inside their fibre cell
@@ -988,6 +990,12 @@ class Planner:
         best_rate_here = 0.0
         best_rate = [0.0]
 
+        def cell_choice(targets, T):
+            return max((gain(j, T), j) for j in targets)
+
+        if CELL_CACHE:
+            cell_choice = lru_cache(maxsize=32768)(cell_choice)
+
         def evaluate(c_alt, c_az, near, durations):
             """Best (net, T, pick, total) for one pointing, or None."""
             cells: dict = {}
@@ -1001,12 +1009,13 @@ class Planner:
                 cells.setdefault(fib, []).append(j)
             if not cells:
                 return None
+            cells = {fib: tuple(js) for fib, js in cells.items()}
             found = None
             for T in durations:
                 total = 0.0
                 pick = {}
                 for fib, js in cells.items():
-                    g, j = max((gain(j, T), j) for j in js)
+                    g, j = cell_choice(js, T)
                     if g > 0:
                         total += g
                         pick[fib] = j
@@ -1051,6 +1060,7 @@ class Planner:
                         improved = True
                 if not improved:
                     break
+        self.cell_cache_info = cell_choice.cache_info()._asdict() if CELL_CACHE else None
         best_rate_here = best_rate[0]
         self.rate_ema = (1 - LAMBDA_EMA) * self.rate_ema + LAMBDA_EMA * best_rate_here if self.rate_ema > 0 else best_rate_here
         if best is None or best[5] <= 0:

@@ -6,3 +6,7 @@ run_output/
 agent_trace.jsonl
 .vscode/
 .workbuddy/
+.survey26-cache/
+.local-kit/
+.env.*
+!.env.example
