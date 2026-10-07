@@ -107,6 +107,17 @@ class Handover:
         return {**context, "request_texts": texts}
 
     @staticmethod
+    def model_context(context):
+        """Put reusable source text before changing clocks for provider prefix caching.
+
+        Keep candidate quotes as well as original numbered lines: the quotes help
+        the model attend to multilingual instrument records. No evidence is removed.
+        """
+        return {"site": context.get("site", {}), "request_texts": context.get("request_texts", []),
+                **{k: v for k, v in context.items() if k not in ("site", "request_texts", "instrument_candidates")},
+                "instrument_candidates": context.get("instrument_candidates", [])}
+
+    @staticmethod
     def validate(operations, context):
         if not isinstance(operations, list):
             return []

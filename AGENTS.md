@@ -6,8 +6,9 @@ Guide for AI coding assistants working in this project. Humans: see README.md / 
 
 A strong, standard-library-only Python agent for the GOSIM survey26 telescope-survey challenge
 (`participant-agent-protocol-v4`). A deterministic planner makes every observe decision; a model
-(default Kimi Coding Plan `k3`) is called twice at the start of every night and once before any paid
-fault report. Read `agent.py` first: it is the stdin/stdout loop and owns pacing, fault reporting and
+(default Kimi Coding Plan `k3`) has two stages at the start of every night and one before any paid
+fault report. With no public handover text, structured weather is evaluated locally instead of calling
+the night-plan model. Identical requests reuse cached answers. Read `agent.py` first: it owns pacing, fault reporting and
 the model stages.
 
 ## Module map

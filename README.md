@@ -166,6 +166,27 @@ See the [DeepSeek thinking-mode documentation](https://api-docs.deepseek.com/gui
 
 Run the focused regression suite with `python -m unittest discover -s tests -v`.
 
+## Model cost controls
+
+The handover parser, nightly fault review, and paid-report confirmation remain in place; the observe planner and fault thresholds are unchanged.
+Only when there is no public request text is the night weather calculated directly using the exact structured rules from the prompt.
+Unknown short and encoded texts still go to the model. Unicode is sent directly, and reusable source text comes before changing clocks/tables for provider prefix caching.
+Original source lines and candidate quotes are retained. Only identical stage/system/input requests reuse replies; changed dates or quality evidence require a new request.
+
+`PRO_MODEL_MAX_RETRIES=2` retries only network errors and transient HTTP errors. HTTP 401/402 disables new requests for this run.
+Delivered invalid/truncated replies are not blindly retried at additional cost. Failures keep the original rule fallback.
+`PRO_MODEL_MAX_CALLS` counts actual HTTP attempts per card, including retries; `PRO_MODEL_CACHE_SIZE` defaults to 128.
+`PRO_MODEL_STRUCTURED_WEATHER=0` restores model weather calls even without handover text. See `.env.example` for overrides.
+
+`llm: usage` stderr records input, cache hits, output, reasoning, and cumulative estimated charges, including late replies that the loop does not collect.
+Official Flash estimates use conservative peak prices and are not invoices. Missing usage is marked unknown; reasoning tokens are already included in output charges.
+Network errors with no usage can incur unmeasured provider charges. Prefix cache hits are not guaranteed. See [official pricing](https://api-docs.deepseek.com/quick_start/pricing/).
+
+On 2026-10-07, a controlled three-night public A1 handover probe (six requests per version, same account, thinking disabled) passed all fault times and three test windows per night.
+Input fell from 40,708 to 17,014 tokens. Off-peak usage-based estimates fell from CNY 0.04309584 to 0.01160728 (about 73%).
+Cache warmth and output randomness affect this sample; it is not a full eight-card invoice or a platform score guarantee.
+The rules-only L1 replay at `PRO_FIXED_LEVEL=2` produced 900 byte-identical actions to the baseline; full model-mode platform scores remain unmeasured.
+
 ## License
 
 Task cards, simulated data, evaluation code and the example projects are licensed under

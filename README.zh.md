@@ -91,6 +91,30 @@ python3 pack_agent.py --out ../python-pro-agent.zip
 
 回归测试：`python -m unittest discover -s tests -v`。
 
+## 模型费用控制
+
+默认保留夜间交接本解析、故障复核与付费报修确认，不修改观测规划器或故障阈值。
+只有没有任何公开请求原文时，夜间天气按提示词中的结构化规则直接计算；未知短句、编码文本仍交给模型。
+中文和日文直接作为 Unicode 发送，避免把 `\uXXXX` 转义文本送给模型。
+交接本原文与重点摘录全部保留，稳定原文放在变化的日期、质量表之前，便于提供商命中前缀缓存。
+完全相同的阶段、提示和输入复用答案；日期、质量表或来源变化会重新请求，不沿用旧夜晚的判断。
+
+默认 `PRO_MODEL_MAX_RETRIES=2`：仅网络错误及临时 HTTP 错误重试。401/402 会停止本次运行的新请求；
+已返回但无效或截断的输出不再盲目付费重试。失败仍按原规则回退，后续阶段仍可继续调用。
+`PRO_MODEL_MAX_CALLS` 按每张卡的实际 HTTP 尝试计数（包括重试）；`PRO_MODEL_CACHE_SIZE` 默认 128。
+`PRO_MODEL_STRUCTURED_WEATHER=0` 可恢复无原文时也请求天气模型。更多覆盖项见 `.env.example`。
+
+每个已返回请求都会在 stderr 记录 `llm: usage`，包括未被主循环取走的晚到回复：输入、缓存命中、输出、思考 token 和累计费用估算。
+官方 Flash 的估算默认采用高峰单价，不是账单；缺少 usage 时明确标记费用未知。思考 token 已计入输出，不能重复计费。
+重试中无法取得 usage 的网络故障也可能产生提供商侧费用，日志无法核实这一部分。
+前缀缓存并不保证每次命中，实际价格和扣费以 [DeepSeek 官方说明](https://api-docs.deepseek.com/zh-cn/quick_start/pricing/) 为准。
+
+2026-10-07 的受控小样本使用同一账号、关闭思考、同一份公开 A1 交接本的三晚（每版六次请求）。
+最终版本通过全部故障时刻和每晚三段测试窗口校验，输入从 40,708 降到 17,014 token；
+按当时空闲单价和实际 usage，估算费用从 0.04309584 元降到 0.01160728 元（约 73%）。
+缓存热度和输出随机性会影响这一比例，不能外推为整轮八卡账单或成绩保证。
+L1 在规则模式、`PRO_FIXED_LEVEL=2` 的 900 个动作与修改前逐字一致；这不代表完整模型模式的平台成绩已经验证。
+
 ## 许可
 
 任务卡、模拟数据、评测代码和示例项目采用 [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) 许可；请引用 GOSIM 2026 Agentic Observer Hackathon（https://create.gosim.org/survey26/）。详见 `../LICENSE.md`。

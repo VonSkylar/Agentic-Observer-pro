@@ -1,8 +1,9 @@
-"""The model-driven stages of the pro agent. Two calls start at the beginning of every night:
+"""The advisory stages of the pro agent. Two stages start at the beginning of every night:
 
 1. night_plan   (natural-language understanding + plan adaptation): reads tonight's forecast and the current
    bulletin and decides whether tonight is a bad night for faint must-observe targets and which compass
-   sectors to keep away from. The planner uses both answers for the whole night.
+   sectors to keep away from. With no handover text the exact weather rules are evaluated locally.
+   The planner uses both answers for the whole night.
 2. fault_review (data parsing + action decision): reads the agent's own hour-by-hour quality table of the last
    nights and judges how likely an unannounced instrument fault is. The answer sets how readily the agent
    reports (probes) a fault tonight.
@@ -15,6 +16,7 @@ value in place for that night.
 """
 from __future__ import annotations
 
+import os
 import time
 
 from handover import Handover
@@ -48,12 +50,16 @@ NIGHT_PLAN_SYSTEM = (
     "UTC bounds. Do not decode unrelated weather lines. Resolve corrections over "
     "obsolete statements; ignore rumours, other observatories and unrelated chatter. Use explicit UTC "
     "equivalents first. Decode relevant Caesar shifts and solfege using the text's conventions. "
-    "Do NOT calculate UTC clock times. Copy each authoritative SOURCE clock time into start_time/end_time, "
+    "Do NOT convert SOURCE clocks into UTC OR site-local time. Copy each authoritative SOURCE clock time into start_time/end_time, "
     "with year and correct calendar date including midnight rollovers. Set utc_offset_hours to 0 for UTC, "
     "9 for Tokyo, or the site's utc_offset_hours for local time. Python will convert these to UTC. "
-    "Extract confirmed guider-camera work that makes all frames invalid until repair as report_fault at its "
-    "onset. Extract flat-lamp/mirror-cover tests as test_window; these invalidate frames but MUST NOT be reported "
-    "as faults. Return only operations overlapping this observing night (fault onsets must be within it). "
+    "For example, a record dated 11/06 at 18:40 Tokyo must stay YYYY-11-06T18:40:00 with offset 9, "
+    "even when its converted site-local date differs. Do not replace its source date with local_night_start. "
+    "Extract EVERY confirmed guider-camera onset in instrument_candidates as report_fault, including dated "
+    "UTC/Tokyo onsets that appear outside the local observing date. Do not filter these faults by comparing "
+    "unconverted source clocks to night bounds: Python alone converts and rejects onsets outside the night. "
+    "Extract flat-lamp/mirror-cover tests for this local observing night as test_window; these invalidate frames "
+    "but MUST NOT be reported as faults. Python also clips and rejects test windows outside the night. "
     "Every operation needs source_request_id and source_line: the INTEGER line number of the original "
     "reason_lines entry supporting its corrected authoritative timing. Cite the original line number, "
     "not a rewritten quote. Do not invent uncertain times. "
@@ -111,12 +117,13 @@ class Advisor:
         self.night_date = None
         self.announced: set = set()
         self.handover = None
+        self.structured_weather = os.environ.get("PRO_MODEL_STRUCTURED_WEATHER", "1") == "1"
 
     # --- night start ---------------------------------------------------------------------------------
 
     def start_night(self, night_date: str, tonight: list, bulletin: list, fault_table: dict, wallclock_left: float,
                     wait_seconds: float, handover: dict | None = None):
-        """Submit both calls; wait up to wait_seconds for them. Returns (plan, fault) answers that are ready."""
+        """Start the night stages; wait up to wait_seconds. Return ready (plan, fault) answers."""
         self.night_date = night_date
         self.handover = handover
         self.announced = {n.get("direction") for n in tonight + bulletin if n.get("event_kind") in WEATHER_KINDS}
@@ -124,9 +131,21 @@ class Advisor:
                    "forecast_tonight": [{"event_kind": n.get("event_kind"), "direction": n.get("direction")} for n in tonight],
                    "bulletin_now": [{"event_kind": n.get("event_kind"), "direction": n.get("direction")} for n in bulletin]}
         if handover is not None:
-            notices["handover"] = Handover.night_context(handover)
-            fault_table = {**fault_table, "handover": handover}
-        self.plan_call = self.client.submit("night_plan", NIGHT_PLAN_SYSTEM, notices, wallclock_left)
+            notices = {"handover": Handover.model_context(Handover.night_context(handover)), **notices}
+            fault_table = {"handover": Handover.model_context(handover), **fault_table}
+        # With no public reason text there is no language/calendar to interpret.
+        # Execute the exact weather rules in NIGHT_PLAN_SYSTEM locally. Unknown
+        # short or encoded texts still use the model; no keyword-based omission.
+        direct_plan = None
+        if self.structured_weather and (handover is None or not handover.get("request_texts")):
+            weather = [n for n in tonight + bulletin if n.get("event_kind") in WEATHER_KINDS]
+            direct_plan = self._valid_plan({
+                "bad_night": any(n.get("direction") == "ALL" and n.get("event_kind") != "cold_snap" for n in weather),
+                "avoid_directions": [n.get("direction") for n in weather],
+                "operations": [], "reason": "structured weather; no handover text"})
+            self.plan_call = None
+        else:
+            self.plan_call = self.client.submit("night_plan", NIGHT_PLAN_SYSTEM, notices, wallclock_left)
         self.fault_call = self.client.submit("fault_review", FAULT_REVIEW_SYSTEM, fault_table, wallclock_left)
         self.plan_applied = self.plan_call is None
         self.fault_applied = self.fault_call is None
@@ -134,7 +153,8 @@ class Advisor:
         for call in (self.plan_call, self.fault_call):
             if call is not None:
                 call.wait(deadline - time.monotonic())
-        return self.poll()
+        plan, fault = self.poll()
+        return direct_plan or plan, fault
 
     def poll(self):
         """(plan, fault) answers that arrived since the last poll; None for each one not (newly) available."""
@@ -177,6 +197,9 @@ class Advisor:
 
     def confirm_report(self, evidence: dict, wallclock_left: float, wait_seconds: float):
         """True / False from the model, or None (no answer in time: the rule decides)."""
+        if isinstance(evidence.get("handover"), dict):
+            evidence = {"handover": Handover.model_context(evidence["handover"]),
+                        **{k: v for k, v in evidence.items() if k != "handover"}}
         call = self.client.submit("confirm_report", CONFIRM_SYSTEM, evidence, wallclock_left)
         if call is None:
             return None
