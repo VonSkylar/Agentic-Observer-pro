@@ -87,6 +87,29 @@ def tangent_offsets(target_alt: float, target_az: float, center_alt: float, cent
             math.degrees((t[0] * east[0] + t[1] * east[1] + t[2] * east[2]) / depth))
 
 
+
+def unit_vector(alt_deg, az_deg):
+    alt, az = math.radians(alt_deg), math.radians(az_deg)
+    return (math.cos(alt)*math.cos(az), math.cos(alt)*math.sin(az), math.sin(alt))
+
+
+def tangent_frame(alt_deg, az_deg):
+    alt, az = math.radians(alt_deg), math.radians(az_deg)
+    return ((math.cos(alt)*math.cos(az), math.cos(alt)*math.sin(az), math.sin(alt)),
+            (-math.sin(alt)*math.cos(az), -math.sin(alt)*math.sin(az), math.cos(alt)),
+            (-math.sin(az), math.cos(az), 0.0))
+
+
+def project_vector(t, frame):
+    """Same arithmetic as tangent_offsets, sharing trig across trial fields."""
+    c,north,east=frame
+    depth=t[0]*c[0]+t[1]*c[1]+t[2]*c[2]
+    if depth<=0:
+        return None
+    return (math.degrees((t[0]*north[0]+t[1]*north[1]+t[2]*north[2])/depth),
+            math.degrees((t[0]*east[0]+t[1]*east[1]+t[2]*east[2])/depth))
+
+
 def shift_altaz(alt_deg: float, az_deg: float, d_north: float, d_east: float) -> tuple[float, float]:
     """The direction d_north / d_east degrees away on the tangent plane at (alt, az). Works near the zenith."""
     alt, az = math.radians(alt_deg), math.radians(az_deg)

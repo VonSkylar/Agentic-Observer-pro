@@ -39,7 +39,7 @@ from skymath import (
     parse_utc,
     radec_to_altaz,
     shift_altaz,
-    tangent_offsets,
+    tangent_offsets, unit_vector, tangent_frame, project_vector,
     wrap180,
 )
 
@@ -62,6 +62,7 @@ REFINE = _env("REFINE", 0.1)                 # local pointing search step (deg);
 REFINE_ROUNDS = _env("REFINE_ROUNDS", 4)
 REFINE_FIXED_T = _env("REFINE_FIXED_T", 1)
 REFINE_STEPS = tuple((dn * REFINE, de * REFINE) for dn in (-1, 0, 1) for de in (-1, 0, 1) if dn or de) if REFINE > 0 else ()
+PROJECT_CACHE = _env("PROJECT_CACHE", 0)       # exact shared projection trigonometry
 ADAPTIVE_DURATIONS = _env("ADAPTIVE_DURATIONS", 0) # number of anchor completion breakpoints to add
 JOINT_PROGRAM = _env("JOINT_PROGRAM", 0)       # score the common program during fibre allocation
 FAST_DENSE = _env("FAST_DENSE", 0)             # retain science anchors in cheap search levels
@@ -1036,11 +1037,19 @@ class Planner:
         if CELL_CACHE:
             cell_choice = lru_cache(maxsize=32768)(cell_choice)
 
+        vectors = {}
+
         def evaluate(c_alt, c_az, near, durations):
             """Best (net, T, pick, total) for one pointing, or None."""
             cells: dict = {}
+            frame = tangent_frame(c_alt,c_az) if PROJECT_CACHE else None
             for j in near:
-                offsets = tangent_offsets(base[j][0], base[j][1], c_alt, c_az)
+                if PROJECT_CACHE:
+                    if j not in vectors:
+                        vectors[j] = unit_vector(base[j][0],base[j][1])
+                    offsets = project_vector(vectors[j],frame)
+                else:
+                    offsets = tangent_offsets(base[j][0], base[j][1], c_alt, c_az)
                 if offsets is None:
                     continue
                 fib, margin = self.grid.classify(*offsets)

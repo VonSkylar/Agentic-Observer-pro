@@ -11,6 +11,6 @@
   "working_directory": ".",
   "environment": {
     "PYTHONDONTWRITEBYTECODE": "1",
-    "PRO_ADAPTIVE_DURATIONS": "4"
+    "PRO_PROJECT_CACHE": "1"
   }
 }

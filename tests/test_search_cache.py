@@ -86,6 +86,22 @@ class CellCacheTests(unittest.TestCase):
             self.assertIsNone(p.completion_duration(i,m0,m1,.8,1,t-1))
         self.assertIsNone(p.completion_duration(i,1,0,1,100,3600))
 
+    def test_shared_projection_matches_original_including_zenith(self):
+        from skymath import tangent_offsets,project_vector,unit_vector,tangent_frame
+        rng=random.Random(123)
+        for _ in range(1000):
+            alt,az=rng.uniform(-90,90),rng.uniform(-360,720)
+            ca,cz=rng.choice([90,0,rng.uniform(-90,90)]),rng.uniform(-360,720)
+            self.assertEqual(tangent_offsets(alt,az,ca,cz),project_vector(unit_vector(alt,az),tangent_frame(ca,cz)))
+
+    def test_shared_projection_preserves_actual_planning_action(self):
+        actions=[]
+        for cache in (0,1):
+            with patch('planner.PROJECT_CACHE',cache):
+                p=Planner(fixture())
+                actions.append(p.plan(START,END,0,0))
+        self.assertEqual(*actions)
+
 
 if __name__=='__main__':
     unittest.main()
