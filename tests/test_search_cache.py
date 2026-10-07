@@ -62,6 +62,20 @@ class CellCacheTests(unittest.TestCase):
                         actual=p.grid.classify(*tangent_offsets(alt,az,action['pointing']['alt_deg'],action['pointing']['az_deg']))[0]
                         self.assertEqual(actual,int(fiber))
 
+    def test_joint_program_matches_best_forced_search(self):
+        rng=random.Random(17)
+        data=fixture();ra=data['targets']['rows'][0][1]
+        data['targets']['rows']=[[str(i),ra+rng.uniform(-3,3),rng.uniform(-3,3),rng.uniform(.2,2),rng.uniform(.5,2),False] for i in range(80)]
+        scores={}
+        with patch('planner.JOINT_PROGRAM',1),patch('planner.REFINE_STEPS',()):
+            for program in (None,'DARK','BRIGHT','BACKUP'):
+                p=Planner(copy.deepcopy(data));p.force_program=program
+                p.band_obs.clear();p.scale=.5;p.prior_scale=.5
+                action=p.plan(START,END,0,0)
+                if program:self.assertEqual(action['program'],program)
+                scores[program]=p.plan_metrics['net_gain']
+        self.assertAlmostEqual(scores[None],max(scores[x] for x in ('DARK','BRIGHT','BACKUP')))
+
 
 if __name__=='__main__':
     unittest.main()

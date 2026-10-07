@@ -62,6 +62,7 @@ REFINE = _env("REFINE", 0.1)                 # local pointing search step (deg);
 REFINE_ROUNDS = _env("REFINE_ROUNDS", 4)
 REFINE_FIXED_T = _env("REFINE_FIXED_T", 1)
 REFINE_STEPS = tuple((dn * REFINE, de * REFINE) for dn in (-1, 0, 1) for de in (-1, 0, 1) if dn or de) if REFINE > 0 else ()
+JOINT_PROGRAM = _env("JOINT_PROGRAM", 0)       # score the common program during fibre allocation
 FAST_DENSE = _env("FAST_DENSE", 0)             # retain science anchors in cheap search levels
 DYNAMIC_GEOMETRY = _env("DYNAMIC_GEOMETRY", 0) # scale placements and neighbourhood to public instrument
 CELL_CACHE = _env("CELL_CACHE", 1)             # exact, decision-local fibre allocation memoization
@@ -901,13 +902,13 @@ class Planner:
             return top_mult * (v / top_mult) ** KAPPA if KAPPA != 1.0 else v
 
         gain_cache = {}
-        def gain(i, T):
-            key = (i, T)
+        def gain(i, T, program=None):
+            key = (i, T, program)
             if key not in gain_cache:
-                gain_cache[key] = uncached_gain(i, T)
+                gain_cache[key] = uncached_gain(i, T, program)
             return gain_cache[key]
 
-        def uncached_gain(i, T):
+        def uncached_gain(i, T, program):
             alt, az, m0, m1, up, mult = full(i)
             if up < T:
                 return 0.0
@@ -920,7 +921,8 @@ class Planner:
                         return 0.0
             model = m0 + (m1 - m0) * min(1.0, T / 3600.0)
             reach = min(1.0, self.flux[i] * T * model * scale / self.f0t0)
-            m = self.multipliers[self._band(model * band_scale)]
+            band = self._band(model * band_scale)
+            m = self.multipliers[band] if program is None or program == band else self.mismatch
             g = self.weight[i] * max(0.0, shaped(reach * m) - shaped(self.cur[i]))
             if reach < PARTIAL_DONE and self.planned[i] and self.last_night[i] - night_index >= PARTIAL_NIGHTS:
                 g *= PARTIAL_DISCOUNT   # it will be completed later: this partial exposure would be wasted
@@ -996,8 +998,8 @@ class Planner:
         best_rate_here = 0.0
         best_rate = [0.0]
 
-        def cell_choice(targets, T):
-            return max((gain(j, T), j) for j in targets)
+        def cell_choice(targets, T, program):
+            return max((gain(j, T, program), j) for j in targets)
 
         if CELL_CACHE:
             cell_choice = lru_cache(maxsize=32768)(cell_choice)
@@ -1018,20 +1020,23 @@ class Planner:
             cells = {fib: tuple(js) for fib, js in cells.items()}
             found = None
             for T in durations:
-                total = 0.0
-                pick = {}
-                for fib, js in cells.items():
-                    g, j = cell_choice(js, T)
-                    if g > 0:
-                        total += g
-                        pick[fib] = j
-                if not pick:
-                    continue
-                if total / T > best_rate[0]:
-                    best_rate[0] = total / T
-                net = total - lam * T
-                if found is None or net > found[0]:
-                    found = (net, T, pick, total)
+                forced = getattr(self, 'force_program', None)
+                programs = (forced,) if forced else tuple(sorted(self.multipliers)) if JOINT_PROGRAM else (None,)
+                for program in programs:
+                    total = 0.0
+                    pick = {}
+                    for fib, js in cells.items():
+                        g, j = cell_choice(js, T, program)
+                        if g > 0:
+                            total += g
+                            pick[fib] = j
+                    if not pick:
+                        continue
+                    if total / T > best_rate[0]:
+                        best_rate[0] = total / T
+                    net = total - lam * T
+                    if found is None or net > found[0]:
+                        found = (net, T, pick, total, program)
             return found
 
         best_near = None
@@ -1048,7 +1053,7 @@ class Planner:
                 c_alt, c_az = round(c_alt, 4), round(c_az, 4) % 360.0
                 found = evaluate(c_alt, c_az, near, durations)
                 if found is not None and (best is None or found[0] > best[0]):
-                    best = (found[0], c_alt, c_az, found[1], found[2], found[3])
+                    best = (found[0], c_alt, c_az, found[1], found[2], found[3], found[4])
                     best_near = near
         if best is not None and REFINE_STEPS and level == 0:
             # local search: nudge the winning pointing to catch targets near the cell edges
@@ -1062,7 +1067,7 @@ class Planner:
                     c_alt, c_az = round(c_alt, 4), round(c_az, 4) % 360.0
                     found = evaluate(c_alt, c_az, best_near, (best[3],) if REFINE_FIXED_T else durations)
                     if found is not None and found[0] > best[0] + 1e-9:
-                        best = (found[0], c_alt, c_az, found[1], found[2], found[3])
+                        best = (found[0], c_alt, c_az, found[1], found[2], found[3], found[4])
                         improved = True
                 if not improved:
                     break
@@ -1074,7 +1079,7 @@ class Planner:
                 self._dbgnone = int(hours)
                 self.log(f"plan none: info={len(info)} ranked={len(ranked)} scale={self.scale:.3f} lam={lam:.4f} best={best and best[:1]}")
             return None
-        _, c_alt, c_az, T, pick, _ = best
+        _, c_alt, c_az, T, pick, _, selected_program = best
         # program: maximise expected score over the assigned targets
         votes = {"DARK": 0.0, "BRIGHT": 0.0, "BACKUP": 0.0}
         for fib, j in pick.items():
@@ -1083,7 +1088,8 @@ class Planner:
             reach = min(1.0, self.flux[j] * T * model * scale / self.f0t0)
             votes[self._band(model * band_scale)] += self.weight[j] * reach + (0.05 * REQUIRED_BONUS if self.required[j] else 0.0)
         total_votes = sum(votes.values())
-        program = max(votes, key=lambda p: (votes[p] * self.multipliers[p] + (total_votes - votes[p]) * self.mismatch, p))
+        program = selected_program or max(votes, key=lambda p: (votes[p] * self.multipliers[p] + (total_votes - votes[p]) * self.mismatch, p))
+        self.plan_metrics = {'net_gain':best[0], 'planning_gain':best[5], 'program':program, 'assigned':len(pick)}
         clean = not self.all_sky_notice()
         self.pending = {}
         for fib, j in pick.items():
