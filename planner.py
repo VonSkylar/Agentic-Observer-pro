@@ -62,6 +62,7 @@ REFINE = _env("REFINE", 0.1)                 # local pointing search step (deg);
 REFINE_ROUNDS = _env("REFINE_ROUNDS", 4)
 REFINE_FIXED_T = _env("REFINE_FIXED_T", 1)
 REFINE_STEPS = tuple((dn * REFINE, de * REFINE) for dn in (-1, 0, 1) for de in (-1, 0, 1) if dn or de) if REFINE > 0 else ()
+ADAPTIVE_DURATIONS = _env("ADAPTIVE_DURATIONS", 0) # number of anchor completion breakpoints to add
 JOINT_PROGRAM = _env("JOINT_PROGRAM", 0)       # score the common program during fibre allocation
 FAST_DENSE = _env("FAST_DENSE", 0)             # retain science anchors in cheap search levels
 DYNAMIC_GEOMETRY = _env("DYNAMIC_GEOMETRY", 0) # scale placements and neighbourhood to public instrument
@@ -780,6 +781,27 @@ class Planner:
             n += 1
         self.log(f"season plan: {n} targets to complete")
 
+    def completion_duration(self, i, m0, m1, scale, factor, limit):
+        """Solve the same linear quality model used by gain(), then round up.
+
+        Only public geometry and learned quality are used. A non-positive
+        discriminant or a deadline beyond the visible interval is infeasible.
+        """
+        if self.flux[i] <= 0 or scale <= 0 or m0 <= 0:
+            return None
+        need = factor * self.f0t0 / (self.flux[i] * scale)
+        slope = (m1-m0)/3600.0
+        discriminant = m0*m0 + 4*slope*need
+        if discriminant < 0:
+            return None
+        t = 2*need / (m0 + math.sqrt(discriminant))
+        t = max(self.min_exposure, int(math.ceil(t/30.0))*30)
+        if t > min(self.max_exposure,limit):
+            return None
+        if self.flux[i]*t*(m0+slope*t)*scale/self.f0t0 + 1e-9 < factor:
+            return None  # rounding can pass the peak of a declining quality curve
+        return t
+
     def plan(self, now: datetime, night_end: datetime, night_index: int, hours: float):
         """Return an observe action dict, or None when nothing useful is up."""
         if PARTIAL_DISCOUNT < 1.0 and night_index != self.plan_night:
@@ -983,6 +1005,16 @@ class Planner:
         ranked.sort(reverse=True)
         n_anchors = (N_ANCHORS, 3, 1, 1)[min(level, 3)]
         anchors = [i for _, i in ranked[:n_anchors]]
+        if ADAPTIVE_DURATIONS:
+            extra = set()
+            for i in anchors[:ADAPTIVE_DURATIONS]:
+                _,_,m0,m1,up,_ = full(i)
+                goals = (1.0, .5*REQ_P_HI) if self.required[i] and self.factor[i]<.5 else (1.0,)
+                for factor in goals:
+                    t = self.completion_duration(i,m0,m1,scale,factor,min(seconds_left,up))
+                    if t is not None:
+                        extra.add(t)
+            durations = sorted(set(durations)|extra)
         if N_DENSE and (level <= 1 or (FAST_DENSE and level <= 3)) and bins:
             # also try the densest patches of remaining science: fields with no single outstanding target
             for _, key in heapq.nlargest(N_DENSE if level == 0 else (FAST_DENSE or 2), ((v, k) for k, v in bins.items())):

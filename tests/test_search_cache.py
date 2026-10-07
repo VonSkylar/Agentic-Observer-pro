@@ -76,6 +76,16 @@ class CellCacheTests(unittest.TestCase):
                 scores[program]=p.plan_metrics['net_gain']
         self.assertAlmostEqual(scores[None],max(scores[x] for x in ('DARK','BRIGHT','BACKUP')))
 
+    def test_completion_duration_reaches_threshold_in_gain_model(self):
+        p=Planner(fixture());i=p.index_of['near']
+        for m0,m1 in ((.6,.8),(.9,.8),(.5,.5)):
+            t=p.completion_duration(i,m0,m1,.8,1,3600)
+            self.assertIsNotNone(t)
+            reach=p.flux[i]*t*(m0+(m1-m0)*t/3600)*.8/p.f0t0
+            self.assertGreaterEqual(reach,1)
+            self.assertIsNone(p.completion_duration(i,m0,m1,.8,1,t-1))
+        self.assertIsNone(p.completion_duration(i,1,0,1,100,3600))
+
 
 if __name__=='__main__':
     unittest.main()
