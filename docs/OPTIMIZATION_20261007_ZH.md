@@ -68,3 +68,7 @@
 3. 平台只允许读取 `python3 tools/official_cli.py --json project show REV --files` / `eval show BATCH`；**不要执行 eval start、eval selfcheck 或最终确认，除非用户明确重新授权并补足模型额度。** 已上传版本会由平台自动做公开小测试，可能有少量模型调用。
 4. 正式评测结束后应先核对每卡和模型失败/故障约束表现；A1/C1 大幅波动已有用户证据，不能只用一次总分决定策略。
 5. 重跑本地时用新输出目录，并显式传 manifest 的 PRO_* 参数；tools/benchmark.py 不会自动应用 manifest 环境。例：`python3 tools/benchmark.py --kit ../agent-observer-starter-kit/strategy_review_output/v4_rebuild/local-kit/examples/_local --out run_output/20261007/c6-validation --cards L3 L4 --fixed-level 0 --set PRO_PROJECT_CACHE=1 --set PRO_CALIBRATION_CACHE=1`。该命令默认规则模式，不消耗 DeepSeek。
+
+### 收尾新增结果
+
+C1 四卡全部完成，L1/L3/L2/L4 均与固定档位基线精确同分。C3 L3 为 6921.139996，低于基线 7005.604063；C4 初始快照 L3 为 7038.894268，小幅上涨不足以抵消 L1 的下降，不认定获益。C5 L3 为 7005.604063，与基线相同，L2/L4 仍待完成。C6 未跑整卡，仅完成 65 项回归与校准微基准；需在后续模型额度允许后进一步验证。

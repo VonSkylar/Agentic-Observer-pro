@@ -925,10 +925,12 @@
     {
       "candidate": "C5",
       "revision_id": "f97f27a1-5ea1-460c-a7ff-6b224b833ff9",
-      "status": "preparing",
+      "status": "reviewable",
       "public_test": {
-        "passed": false,
-        "status": "queued"
+        "score": -111.518261,
+        "passed": true,
+        "run_id": "036c6cff-a952-40dc-bccb-1030d933e0f5",
+        "status": "passed"
       },
       "evaluations": 0,
       "manifest": {
@@ -952,10 +954,31 @@
     {
       "candidate": "C6",
       "revision_id": "167e80d4-7980-41ba-b8bc-fcfba74c21c9",
-      "status": "preparing",
-      "public_test": {},
+      "status": "reviewable",
+      "public_test": {
+        "score": -111.518261,
+        "passed": true,
+        "run_id": "1c86ab03-50f2-453c-a3da-2f094f763d5a",
+        "status": "passed"
+      },
       "evaluations": 0,
-      "manifest": null,
+      "manifest": {
+        "run": [
+          "python3",
+          "-u",
+          "agent.py"
+        ],
+        "build": [],
+        "image": "python@sha256:05cda9777409a9c3ffddd94a4c476b79f0769a0b4857f0c7ed9226b6800b0d6f",
+        "protocol": "jsonl-v2",
+        "environment": {
+          "PRO_PROJECT_CACHE": "1",
+          "PRO_CALIBRATION_CACHE": "1",
+          "PYTHONDONTWRITEBYTECODE": "1"
+        },
+        "schema_version": "observer-project-v1",
+        "working_directory": "."
+      },
       "adapter_files": {}
     }
   ],
