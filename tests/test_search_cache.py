@@ -37,6 +37,31 @@ class CellCacheTests(unittest.TestCase):
                     for planner in (a,b):
                         planner.on_result(result,now+timedelta(seconds=x['duration_seconds']),turn/3)
 
+    def test_saturated_science_can_still_complete_a_new_request(self):
+        p=Planner(fixture())
+        p.factor=[1.0]*len(p.ids)
+        p.cur=[1.2]*len(p.ids)
+        p.on_requests([request(['near'])])
+        action=p.plan(START,END,0,0)
+        self.assertIsNotNone(action)
+        self.assertIn('near',action['assignments'].values())
+
+    def test_dynamic_grid_and_fast_density_preserve_physical_assignments(self):
+        from skymath import local_sidereal_deg,radec_to_altaz,tangent_offsets
+        for side in (3,4,5,10):
+            for level in (0,1,2,3):
+                with self.subTest(side=side,level=level),patch('planner.DYNAMIC_GEOMETRY',1),patch('planner.FAST_DENSE',4):
+                    data=fixture();data['instrument'].update(grid_side=side,n_fibers=side*side,
+                        pitch_deg=2.4/side,glass_side_deg=2.4/side,fov_side_deg=2.4)
+                    p=Planner(data);p.fast_level=level
+                    action=p.plan(START,END,0,0)
+                    self.assertIsNotNone(action)
+                    for fiber,target in action['assignments'].items():
+                        i=p.index_of[target]
+                        alt,az=radec_to_altaz(p.ra[i],p.dec[i],local_sidereal_deg(START,p.lon),p.lat)
+                        actual=p.grid.classify(*tangent_offsets(alt,az,action['pointing']['alt_deg'],action['pointing']['az_deg']))[0]
+                        self.assertEqual(actual,int(fiber))
+
 
 if __name__=='__main__':
     unittest.main()

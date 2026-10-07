@@ -62,6 +62,8 @@ REFINE = _env("REFINE", 0.1)                 # local pointing search step (deg);
 REFINE_ROUNDS = _env("REFINE_ROUNDS", 4)
 REFINE_FIXED_T = _env("REFINE_FIXED_T", 1)
 REFINE_STEPS = tuple((dn * REFINE, de * REFINE) for dn in (-1, 0, 1) for de in (-1, 0, 1) if dn or de) if REFINE > 0 else ()
+FAST_DENSE = _env("FAST_DENSE", 0)             # retain science anchors in cheap search levels
+DYNAMIC_GEOMETRY = _env("DYNAMIC_GEOMETRY", 0) # scale placements and neighbourhood to public instrument
 CELL_CACHE = _env("CELL_CACHE", 1)             # exact, decision-local fibre allocation memoization
 POOL = _env("POOL", 600)                      # candidates kept after the cheap proxy ranking
 NEIGHBOUR_RADIUS_DEG = _env("NEIGHBOUR_RADIUS_DEG", 2.5)
@@ -850,7 +852,7 @@ class Planner:
                 key = (int((self.ra[i] * cd[i]) // DENSE_BIN_DEG), int((self.dec[i] + 90.0) // DENSE_BIN_DEG))
                 dense_val = self.weight[i] * max(0.0, 1.0 - self.cur[i] / 1.2) * (sin_alt ** 0.6)
                 bins[key] = bins.get(key, 0.0) + dense_val
-                if dense_val > bin_best.get(key, (0.0, -1))[0]:
+                if key not in bin_best or dense_val > bin_best[key][0]:
                     bin_best[key] = (dense_val, i)
         self.active = still_active
         if not visible:
@@ -966,7 +968,7 @@ class Planner:
         for i in pool:
             g1, T1 = quick(i, t_long)
             g2, T2 = quick(i, t_mid)
-            best_net = max(g1 - lam * T1 / 16.0, g2 - lam * T2 / 16.0)
+            best_net = max(g1 - lam * T1 / (self.grid.n if DYNAMIC_GEOMETRY else 16.0), g2 - lam * T2 / (self.grid.n if DYNAMIC_GEOMETRY else 16.0))
             if best_net > 0:
                 ranked.append((best_net, i))
         if not ranked:
@@ -979,13 +981,17 @@ class Planner:
         ranked.sort(reverse=True)
         n_anchors = (N_ANCHORS, 3, 1, 1)[min(level, 3)]
         anchors = [i for _, i in ranked[:n_anchors]]
-        if N_DENSE and level <= 1 and bins:
+        if N_DENSE and (level <= 1 or (FAST_DENSE and level <= 3)) and bins:
             # also try the densest patches of remaining science: fields with no single outstanding target
-            for _, key in heapq.nlargest(N_DENSE if level == 0 else 2, ((v, k) for k, v in bins.items())):
+            for _, key in heapq.nlargest(N_DENSE if level == 0 else (FAST_DENSE or 2), ((v, k) for k, v in bins.items())):
                 j = bin_best[key][1]
                 if j not in anchors and exact(j) is not None:
                     anchors.append(j)
-        fibers = (range(self.grid.n), range(self.grid.n), (5, 6, 9, 10), (5,))[min(level, 3)]
+        middle = sorted({(self.grid.side-1)//2, self.grid.side//2})
+        dense_fibers = tuple(r*self.grid.side+c for r in middle for c in middle) if DYNAMIC_GEOMETRY else DENSE_FIBERS
+        fibers = (range(self.grid.n), range(self.grid.n), dense_fibers, dense_fibers[:1])[min(level, 3)]
+        neighbour_radius = max(NEIGHBOUR_RADIUS_DEG, self.grid.fov / math.sqrt(2)
+                               + math.hypot(*self.grid.fiber_center(0)) + .15) if DYNAMIC_GEOMETRY else NEIGHBOUR_RADIUS_DEG
         best = None
         best_rate_here = 0.0
         best_rate = [0.0]
@@ -1032,9 +1038,9 @@ class Planner:
         n_value_anchors = min(len(anchors), n_anchors)
         for rank, anchor in enumerate(anchors):
             a_alt, a_az = base[anchor][0], base[anchor][1]
-            near = [j for j in self.neighbours(self.ra[anchor], self.dec[anchor], NEIGHBOUR_RADIUS_DEG) if j in visible and exact(j) is not None]
+            near = [j for j in self.neighbours(self.ra[anchor], self.dec[anchor], neighbour_radius) if j in visible and exact(j) is not None]
             # density anchors mark a patch, not a target to centre: a few central placements, then refine
-            for fiber in (fibers if rank < n_value_anchors else DENSE_FIBERS):
+            for fiber in (fibers if rank < n_value_anchors else dense_fibers):
                 d_north, d_east = self.grid.fiber_center(fiber)
                 c_alt, c_az = shift_altaz(a_alt, a_az, -d_north, -d_east)
                 if not self.min_alt <= c_alt <= 89.0:

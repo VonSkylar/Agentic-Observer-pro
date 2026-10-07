@@ -10,6 +10,8 @@
   ],
   "working_directory": ".",
   "environment": {
-    "PYTHONDONTWRITEBYTECODE": "1"
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "PRO_FAST_DENSE": "4",
+    "PRO_DYNAMIC_GEOMETRY": "1"
   }
 }
